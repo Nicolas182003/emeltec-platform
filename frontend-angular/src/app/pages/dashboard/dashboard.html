@@ -1,0 +1,63 @@
+<div class="flex bg-slate-50 min-h-screen font-sans">
+  <app-sidebar />
+  
+  <!-- Contenido principal -->
+  <main class="flex-1 ml-64 flex flex-col">
+    <!-- Topbar -->
+    <header class="bg-white border-b border-slate-200 px-8 py-5 flex justify-between items-center sticky top-0 z-20 shadow-sm">
+      <div class="flex items-center gap-4">
+        <div class="p-2 bg-blue-50 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-slate-800">Dashboard Dinámico</h1>
+          <p class="text-sm text-slate-500">
+            {{ loading() ? 'Sincronizando...' : 'Última actualización: ' + currentTime }}
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2 border border-emerald-100">
+          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+          Sistema en línea
+        </div>
+      </div>
+    </header>
+
+    <!-- Grid de Widgets -->
+    <div class="p-8 max-w-[1600px] w-full mx-auto">
+      
+      <!-- KPIs -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+        @for (key of availableKeys(); track key; let i = $index) {
+          <app-metric-card
+            [title]="getMetricTitle(key)"
+            [value]="getMetricValue(key)"
+            [unit]="getMetricUnit(key)"
+            [time]="getMetricTime()"
+          />
+        }
+        
+        @if (availableKeys().length === 0 && !loading()) {
+          <div class="col-span-full border-2 border-dashed border-slate-300 rounded-xl p-12 text-center">
+            <p class="text-slate-500 font-medium">No se encontraron variables en la API.</p>
+            <p class="text-slate-400 text-sm mt-1">Asegurese de que csvprocessor está encendido.</p>
+          </div>
+        }
+      </div>
+
+      <!-- Gráficos -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        @for (key of availableKeys(); track key; let i = $index) {
+          <app-chart-card
+            [title]="getChartTitle(key)"
+            [data]="historicalData()"
+            [dataKey]="key"
+            [color]="getChartColor(i)"
+          />
+        }
+      </div>
+
+    </div>
+  </main>
+</div>

@@ -13,6 +13,7 @@ const healthRoutes = require("./routes/healthRoutes");
 const dataRoutes = require("./routes/dataRoutes");
 const catalogRoutes = require("./routes/catalogRoutes");
 const metricsRoutes = require("./routes/metricsRoutes");
+const alertRoutes = require("./routes/alertRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
@@ -54,6 +55,9 @@ app.use("/api/health", healthRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api/metrics", metricsRoutes);
+
+// Ruta interna de alertas (solo servicios internos con x-internal-key)
+app.use("/internal/alerts", alertRoutes);
 
 
 /* Servir archivos estáticos desde la carpeta demo */

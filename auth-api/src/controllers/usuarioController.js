@@ -1,24 +1,8 @@
-const db     = require('../config/db');
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
+const db          = require('../config/db');
+const bcrypt      = require('bcrypt');
+const crypto      = require('crypto');
+const alertClient = require('../services/alertClient');
 
-/**
- * POST /api/usuarios
- * Crea un nuevo usuario con contraseña hasheada.
- *
- * Body esperado:
- * {
- *   nombre:        string (requerido)
- *   apellido:      string (requerido)
- *   email:         string (requerido)
- *   password:      string (requerido)
- *   tipo:          "SuperAdmin" | "Admin" | "Gerente" | "Cliente"  (requerido)
- *   telefono:      string (opcional)
- *   cargo:         string (opcional)
- *   empresa_id:    string (opcional — requerido si tipo != SuperAdmin)
- *   sub_empresa_id: string (opcional — requerido si tipo == Gerente)
- * }
- */
 exports.crearUsuario = async (req, res, next) => {
   try {
     const {
@@ -26,37 +10,23 @@ exports.crearUsuario = async (req, res, next) => {
       tipo, telefono, cargo, empresa_id, sub_empresa_id
     } = req.body;
 
-    // Validaciones básicas
     if (!nombre || !apellido || !email || !tipo) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Campos requeridos: nombre, apellido, email, tipo'
-      });
+      return res.status(400).json({ ok: false, error: 'Campos requeridos: nombre, apellido, email, tipo' });
     }
 
     const tiposValidos = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
     if (!tiposValidos.includes(tipo)) {
-      return res.status(400).json({
-        ok: false,
-        error: `Tipo inválido. Valores permitidos: ${tiposValidos.join(', ')}`
-      });
+      return res.status(400).json({ ok: false, error: `Tipo invalido. Valores permitidos: ${tiposValidos.join(', ')}` });
     }
 
     if (tipo !== 'SuperAdmin' && !empresa_id) {
-      return res.status(400).json({
-        ok: false,
-        error: 'empresa_id es requerido para roles Admin, Gerente y Cliente'
-      });
+      return res.status(400).json({ ok: false, error: 'empresa_id es requerido para roles Admin, Gerente y Cliente' });
     }
 
     if (tipo === 'Gerente' && !sub_empresa_id) {
-      return res.status(400).json({
-        ok: false,
-        error: 'sub_empresa_id es requerido para el rol Gerente'
-      });
+      return res.status(400).json({ ok: false, error: 'sub_empresa_id es requerido para el rol Gerente' });
     }
 
-    // Verificar que empresa existe (si aplica)
     if (empresa_id) {
       const { rows } = await db.query('SELECT id FROM empresa WHERE id = $1', [empresa_id]);
       if (rows.length === 0) {
@@ -64,7 +34,6 @@ exports.crearUsuario = async (req, res, next) => {
       }
     }
 
-    // Hashear contraseña solo si se envía — si no, el usuario entra por OTP
     const password_hash = password ? await bcrypt.hash(password, 10) : null;
     const newId = 'U' + crypto.randomBytes(3).toString('hex');
 
@@ -78,24 +47,21 @@ exports.crearUsuario = async (req, res, next) => {
        password_hash]
     );
 
-    res.status(201).json({
-      ok: true,
-      message: 'Usuario creado exitosamente',
-      data: { id: newId, email, tipo }
+    alertClient.enviarAlerta('usuario_creado', {
+      nuevoUsuario: { id: newId, nombre, apellido, email, tipo, empresa_id: empresa_id || null },
+      creadoPor: req.user?.email || 'Sistema',
     });
+
+    res.status(201).json({ ok: true, message: 'Usuario creado exitosamente', data: { id: newId, email, tipo } });
 
   } catch (err) {
     if (err.code === '23505') {
-      return res.status(409).json({ ok: false, error: 'El correo ya está registrado' });
+      return res.status(409).json({ ok: false, error: 'El correo ya esta registrado' });
     }
     next(err);
   }
 };
 
-/**
- * GET /api/usuarios
- * Lista todos los usuarios (sin exponer password_hash).
- */
 exports.listarUsuarios = async (_req, res, next) => {
   try {
     const { rows } = await db.query(

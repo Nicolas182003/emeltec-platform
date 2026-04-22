@@ -6,51 +6,51 @@ import (
 )
 
 // Config representa la configuración del csvprocessor.
-// Aquí se centralizan todas las rutas y parámetros del proceso.
 type Config struct {
-	GRPCAddress    string // Dirección del servidor gRPC, por ejemplo localhost:50051.
-	TimeoutSeconds int    // Tiempo máximo de espera para la llamada gRPC.
+	GRPCAddress    string
+	TimeoutSeconds int
 
-	InputDir     string // Carpeta donde llegan los logs crudos.
-	RawBackupDir string // Carpeta donde se guarda el respaldo exacto del log original.
-	ProcessedDir string // Carpeta donde se mueven los logs procesados correctamente.
-	FailedDir    string // Carpeta donde se mueven los logs que fallaron.
+	InputDir     string // incoming_logs/
+	RawBackupDir string // raw_backup/
+	FailedDir    string // failed_logs/
+
+	NumWorkers      int // Goroutines procesando en paralelo (default 4)
+	WatchIntervalMs int // Cada cuántos ms revisar incoming_logs (default 200)
+	RetryIntervalSec int // Cada cuántos segundos reintentar failed_logs (default 30)
+	StatsIntervalSec int // Cada cuántos segundos imprimir estadísticas (default 10)
 }
 
-// Load construye la configuración leyendo variables de entorno.
 func Load() Config {
 	return Config{
 		GRPCAddress:    getEnv("GRPC_ADDRESS", "localhost:50051"),
-		TimeoutSeconds: getEnvAsInt("TIMEOUT_SECONDS", 10),
+		TimeoutSeconds: getEnvInt("TIMEOUT_SECONDS", 10),
 
 		InputDir:     getEnv("INPUT_DIR", "data/incoming_logs"),
 		RawBackupDir: getEnv("RAW_BACKUP_DIR", "data/raw_backup"),
-		ProcessedDir: getEnv("PROCESSED_DIR", "data/processed_logs"),
 		FailedDir:    getEnv("FAILED_DIR", "data/failed_logs"),
+
+		NumWorkers:       getEnvInt("NUM_WORKERS", 4),
+		WatchIntervalMs:  getEnvInt("WATCH_INTERVAL_MS", 200),
+		RetryIntervalSec: getEnvInt("RETRY_INTERVAL_SEC", 30),
+		StatsIntervalSec: getEnvInt("STATS_INTERVAL_SEC", 10),
 	}
 }
 
-// getEnv devuelve una variable de entorno o un valor por defecto.
-func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
-	return value
+	return def
 }
 
-// getEnvAsInt devuelve una variable de entorno parseada como entero.
-// Si no existe o falla el parseo, devuelve el valor por defecto.
-func getEnvAsInt(key string, defaultValue int) int {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
+func getEnvInt(key string, def int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
 	}
-
-	parsed, err := strconv.Atoi(value)
+	n, err := strconv.Atoi(v)
 	if err != nil {
-		return defaultValue
+		return def
 	}
-
-	return parsed
+	return n
 }

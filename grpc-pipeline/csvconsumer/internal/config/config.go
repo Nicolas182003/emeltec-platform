@@ -19,10 +19,10 @@ func Load() Config {
 	return Config{
 		GRPCPort:   getEnv("GRPC_PORT", "50051"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBName:     getEnv("DB_NAME", "telemetry_platform"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "admin"),
+		DBPort:     getEnv("DB_PORT", "5433"),
+		DBName:     getEnv("DB_NAME", "db_infra"),
+		DBUser:     getEnv("DB_USER", "admin_infra"),
+		DBPassword: getEnv("DB_PASSWORD", "Infra2026Secure!"),
 	}
 }
 

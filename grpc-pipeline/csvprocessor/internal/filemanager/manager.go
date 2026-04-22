@@ -138,10 +138,10 @@ func CopyToBackupBySerial(sourcePath, backupRootDir, idSerial string) error {
 	return nil
 }
 
-// MoveToProcessed mueve un archivo a la carpeta de procesados.
-func MoveToProcessed(sourcePath, processedDir string) error {
-	targetPath := filepath.Join(processedDir, filepath.Base(sourcePath))
-	return moveFile(sourcePath, targetPath)
+// DeleteFile elimina el archivo original tras procesarlo exitosamente.
+// El respaldo ya fue guardado en raw_backup/ antes de llamar esto.
+func DeleteFile(filePath string) {
+	_ = os.Remove(filePath)
 }
 
 // MoveToFailed mueve un archivo a la carpeta de fallidos.

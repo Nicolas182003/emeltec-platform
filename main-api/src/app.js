@@ -13,8 +13,6 @@ const healthRoutes = require("./routes/healthRoutes");
 const dataRoutes = require("./routes/dataRoutes");
 const catalogRoutes = require("./routes/catalogRoutes");
 const metricsRoutes = require("./routes/metricsRoutes");
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
@@ -56,8 +54,6 @@ app.use("/api/health", healthRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api/metrics", metricsRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 
 
 /* Servir archivos estáticos desde la carpeta demo */

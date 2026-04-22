@@ -2,7 +2,7 @@
 
 Esta carpeta contiene la configuración de **Docker Compose** para levantar la base de datos del proyecto.
 
----
+---<>
 
 ## 📦 Servicios incluidos
 

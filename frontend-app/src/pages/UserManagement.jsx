@@ -26,7 +26,7 @@ export default function UserManagement() {
     const fetchEmpresas = async () => {
       try {
         const token = localStorage.getItem('jwt_token');
-        const res = await axios.get('/api/users/empresas', {
+        const res = await axios.get('/api/front/empresas', {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.data.ok) setEmpresas(res.data.data);
@@ -48,7 +48,7 @@ export default function UserManagement() {
 
     try {
       const token = localStorage.getItem('jwt_token');
-      const res = await axios.post('/api/users', formData, {
+      const res = await axios.post('/api/front/usuarios', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

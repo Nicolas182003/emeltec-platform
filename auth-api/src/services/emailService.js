@@ -1,36 +1,14 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-let transporter = null;
+let resend = null;
 
-async function initTransporter() {
-  if (transporter) return transporter;
-
-  if (process.env.SMTP_HOST && process.env.SMTP_USER &&
-      process.env.SMTP_PASS && !process.env.SMTP_PASS.includes('xxxx')) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT) || 465,
-      secure: process.env.SMTP_PORT === '465',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-    console.log('📧 SMTP Gmail configurado correctamente.');
-    return transporter;
+function getClient() {
+  if (resend) return resend;
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY no está definida en el .env');
   }
-
-  // Modo simulación (sin credenciales reales)
-  console.log('⚠️  Sin credenciales SMTP — usando modo simulación (Ethereal)...');
-  const testAccount = await nodemailer.createTestAccount();
-  transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: { user: testAccount.user, pass: testAccount.pass },
-  });
-  console.log('✅ SMTP Ethereal listo (modo pruebas).');
-  return transporter;
+  resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
 }
 
 /**
@@ -38,11 +16,11 @@ async function initTransporter() {
  */
 exports.sendOTPEmail = async (emailDestino, nombreCompleto, otpCode, minutes = 30) => {
   try {
-    const tp = await initTransporter();
+    const client = getClient();
 
-    const result = await tp.sendMail({
-      from: '"Emeltec — Panel Industrial" <no-reply@emeltec.cl>',
-      to: emailDestino,
+    const { data, error } = await client.emails.send({
+      from: 'Emeltec — Panel Industrial <suport@emeltec.cl>',
+      to: [emailDestino],
       subject: '🔐 Tu código de acceso — Emeltec',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px;
@@ -62,16 +40,16 @@ exports.sendOTPEmail = async (emailDestino, nombreCompleto, otpCode, minutes = 3
       `,
     });
 
-    const previewUrl = nodemailer.getTestMessageUrl(result);
-    if (previewUrl) {
-      console.log('─────────────────────────────────────');
-      console.log('📨 Ver correo simulado:', previewUrl);
-      console.log('─────────────────────────────────────');
+    if (error) {
+      console.error('❌ Error Resend:', error.message);
+      return { ok: false, error: error.message };
     }
 
-    return { ok: true, previewUrl: previewUrl || null };
-  } catch (error) {
-    console.error('❌ Error al enviar correo:', error.message);
-    return { ok: false, error: error.message };
+    console.log('📧 Correo enviado via Resend. ID:', data.id);
+    return { ok: true, id: data.id };
+
+  } catch (err) {
+    console.error('❌ Error al enviar correo:', err.message);
+    return { ok: false, error: err.message };
   }
 };

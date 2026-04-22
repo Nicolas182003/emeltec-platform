@@ -19,7 +19,7 @@ exports.sendOTPEmail = async (emailDestino, nombreCompleto, otpCode, minutes = 3
     const client = getClient();
 
     const { data, error } = await client.emails.send({
-      from: 'Emeltec — Panel Industrial <suport@emeltec.cl>',
+      from: 'Emeltec — Panel Industrial <noreply@emeltec.cl>',
       to: [emailDestino],
       subject: '🔐 Tu código de acceso — Emeltec',
       html: `

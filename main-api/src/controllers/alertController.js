@@ -11,7 +11,7 @@
 const dispatcher = require('../services/alertDispatcher');
 
 // Tipos de alerta válidos que acepta el sistema
-const TIPOS_VALIDOS = ['usuario_creado', 'empresa_creada', 'umbral_telemetria', 'monitoreo'];
+const TIPOS_VALIDOS = ['usuario_creado', 'empresa_creada', 'umbral_telemetria', 'monitoreo', 'error_archivo'];
 
 /**
  * POST /internal/alerts

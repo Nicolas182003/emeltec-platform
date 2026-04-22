@@ -1,17 +1,18 @@
 /**
- * alertDispatcher.js — Decide a quién enviar cada alerta según la jerarquía de roles.
+ * alertDispatcher.js — Decide a quien enviar cada alerta segun la jerarquia de roles.
  *
- * Este módulo recibe un tipo de alerta y los datos del evento, consulta la base
- * de datos para determinar los destinatarios correctos, y delega el envío a alertService.
+ * Este modulo recibe un tipo de alerta y los datos del evento, consulta la base
+ * de datos para determinar los destinatarios correctos, y delega el envio a alertService.
  *
- * Jerarquía de notificaciones:
- *   - SuperAdmin creado  → notifica a los otros SuperAdmins existentes
- *   - Admin creado       → notifica a todos los SuperAdmins
- *   - Gerente creado     → notifica a los Admins de su empresa + SuperAdmins
- *   - Cliente creado     → notifica a Gerentes + Admins de su empresa + SuperAdmins
- *   - Empresa creada     → notifica a todos los SuperAdmins
- *   - Umbral telemetría  → notifica a Admins de la empresa del equipo + SuperAdmins
- *   - Monitoreo          → notifica solo a SuperAdmins
+ * Jerarquia de notificaciones:
+ *   - SuperAdmin creado  => notifica a los otros SuperAdmins existentes
+ *   - Admin creado       => notifica a todos los SuperAdmins
+ *   - Gerente creado     => notifica a los Admins de su empresa + SuperAdmins
+ *   - Cliente creado     => notifica a Gerentes + Admins de su empresa + SuperAdmins
+ *   - Empresa creada     => notifica a todos los SuperAdmins
+ *   - Umbral telemetria  => notifica a Admins de la empresa del equipo + SuperAdmins
+ *   - Monitoreo          => notifica solo a SuperAdmins
+ *   - Error archivo      => notifica solo a SuperAdmins (error en el pipeline Go)
  */
 
 const db           = require('../config/db');
@@ -28,7 +29,7 @@ async function getSuperAdmins() {
 }
 
 /**
- * Consulta la BD y retorna los emails de los Admins de una empresa específica.
+ * Consulta la BD y retorna los emails de los Admins de una empresa especifica.
  * @param {string} empresa_id
  */
 async function getAdminsDeEmpresa(empresa_id) {
@@ -40,7 +41,7 @@ async function getAdminsDeEmpresa(empresa_id) {
 }
 
 /**
- * Consulta la BD y retorna los emails de los Gerentes de una empresa específica.
+ * Consulta la BD y retorna los emails de los Gerentes de una empresa especifica.
  * @param {string} empresa_id
  */
 async function getGerentesDeEmpresa(empresa_id) {
@@ -53,7 +54,7 @@ async function getGerentesDeEmpresa(empresa_id) {
 
 /**
  * Elimina emails duplicados de un array (por si un usuario tiene varios roles).
- * También filtra valores nulos o vacíos.
+ * Tambien filtra valores nulos o vacios.
  */
 function unique(emails) {
   return [...new Set(emails.filter(Boolean))];
@@ -61,7 +62,7 @@ function unique(emails) {
 
 /**
  * Punto de entrada principal del dispatcher.
- * Determina los destinatarios según el tipo de alerta y llama a alertService.
+ * Determina los destinatarios segun el tipo de alerta y llama a alertService.
  *
  * @param {string} tipo  - Tipo de alerta (debe coincidir con los definidos en alertService)
  * @param {object} datos - Datos del evento para pasar a la plantilla de correo
@@ -78,23 +79,23 @@ exports.despachar = async (tipo, datos) => {
         const superAdmins = await getSuperAdmins();
 
         if (nuevoUsuario.tipo === 'Admin') {
-          // Un Admin fue creado → solo los SuperAdmins deben saberlo
+          // Un Admin fue creado => solo los SuperAdmins deben saberlo
           destinos = superAdmins;
 
         } else if (nuevoUsuario.tipo === 'Gerente') {
-          // Un Gerente fue creado → los Admins de su empresa + todos los SuperAdmins
+          // Un Gerente fue creado => los Admins de su empresa + todos los SuperAdmins
           const admins = await getAdminsDeEmpresa(nuevoUsuario.empresa_id);
           destinos = unique([...admins, ...superAdmins]);
 
         } else if (nuevoUsuario.tipo === 'Cliente') {
-          // Un Cliente fue creado → Gerentes + Admins de su empresa + SuperAdmins
+          // Un Cliente fue creado => Gerentes + Admins de su empresa + SuperAdmins
           const gerentes = await getGerentesDeEmpresa(nuevoUsuario.empresa_id);
           const admins   = await getAdminsDeEmpresa(nuevoUsuario.empresa_id);
           destinos = unique([...gerentes, ...admins, ...superAdmins]);
 
         } else if (nuevoUsuario.tipo === 'SuperAdmin') {
-          // Otro SuperAdmin fue creado → notificar a los SuperAdmins ya existentes
-          // (excluimos al recién creado para no notificarse a sí mismo)
+          // Otro SuperAdmin fue creado => notificar a los SuperAdmins ya existentes
+          // (excluimos al recien creado para no notificarse a si mismo)
           destinos = superAdmins.filter(e => e !== nuevoUsuario.email);
         }
 
@@ -102,13 +103,13 @@ exports.despachar = async (tipo, datos) => {
       }
 
       case 'empresa_creada': {
-        // Una empresa fue creada → solo los SuperAdmins supervisan esto
+        // Una empresa fue creada => solo los SuperAdmins supervisan esto
         destinos = await getSuperAdmins();
         break;
       }
 
       case 'umbral_telemetria': {
-        // Un equipo superó un límite → Admins de la empresa del equipo + SuperAdmins
+        // Un equipo supero un limite => Admins de la empresa del equipo + SuperAdmins
         const { empresa_id } = datos;
         const admins      = empresa_id ? await getAdminsDeEmpresa(empresa_id) : [];
         const superAdmins = await getSuperAdmins();
@@ -117,7 +118,14 @@ exports.despachar = async (tipo, datos) => {
       }
 
       case 'monitoreo': {
-        // Alerta general del sistema → solo SuperAdmins
+        // Alerta general del sistema => solo SuperAdmins
+        destinos = await getSuperAdmins();
+        break;
+      }
+
+      case 'error_archivo': {
+        // El pipeline Go (csvprocessor) fallo al procesar un archivo de telemetria.
+        // Solo los SuperAdmins deben recibir esta alerta de infraestructura.
         destinos = await getSuperAdmins();
         break;
       }
@@ -127,13 +135,13 @@ exports.despachar = async (tipo, datos) => {
         return { ok: false, error: `Tipo desconocido: ${tipo}` };
     }
 
-    // Si no se encontró ningún destinatario en la BD, no se envía nada
+    // Si no se encontro ningun destinatario en la BD, no se envia nada
     if (destinos.length === 0) {
-      console.log(`ℹ️  alertDispatcher: sin destinatarios para "${tipo}". Sin envío.`);
+      console.log(`ℹ️  alertDispatcher: sin destinatarios para "${tipo}". Sin envio.`);
       return { ok: true, skipped: true, motivo: 'sin_destinatarios' };
     }
 
-    // Delegar el envío real del correo a alertService
+    // Delegar el envio real del correo a alertService
     return await alertService.enviarAlerta(tipo, destinos, datos);
 
   } catch (err) {

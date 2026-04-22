@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-// Config representa la configuración del csvprocessor.
+// Config representa la configuracion del csvprocessor.
 type Config struct {
 	GRPCAddress    string
 	TimeoutSeconds int
@@ -14,12 +14,18 @@ type Config struct {
 	RawBackupDir string // raw_backup/
 	FailedDir    string // failed_logs/
 
-	NumWorkers      int // Goroutines procesando en paralelo (default 4)
-	WatchIntervalMs int // Cada cuántos ms revisar incoming_logs (default 200)
-	RetryIntervalSec int // Cada cuántos segundos reintentar failed_logs (default 30)
-	StatsIntervalSec int // Cada cuántos segundos imprimir estadísticas (default 10)
+	NumWorkers       int // Goroutines procesando en paralelo (default 4)
+	WatchIntervalMs  int // Cada cuantos ms revisar incoming_logs (default 200)
+	RetryIntervalSec int // Cada cuantos segundos reintentar failed_logs (default 30)
+	StatsIntervalSec int // Cada cuantos segundos imprimir estadisticas (default 10)
+
+	// Alertas: comunicacion con main-api cuando un archivo falla todos sus reintentos.
+	MainAPIURL     string // URL base de main-api (ej: http://localhost:3000)
+	InternalAPIKey string // Clave secreta compartida entre servicios internos
 }
 
+// Load construye la configuracion leyendo variables de entorno.
+// Si alguna no existe, se usa un valor por defecto.
 func Load() Config {
 	return Config{
 		GRPCAddress:    getEnv("GRPC_ADDRESS", "localhost:50051"),
@@ -33,6 +39,9 @@ func Load() Config {
 		WatchIntervalMs:  getEnvInt("WATCH_INTERVAL_MS", 200),
 		RetryIntervalSec: getEnvInt("RETRY_INTERVAL_SEC", 30),
 		StatsIntervalSec: getEnvInt("STATS_INTERVAL_SEC", 10),
+
+		MainAPIURL:     getEnv("MAIN_API_URL", "http://localhost:3000"),
+		InternalAPIKey: getEnv("INTERNAL_API_KEY", ""),
 	}
 }
 

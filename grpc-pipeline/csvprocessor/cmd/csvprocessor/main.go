@@ -11,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"grpc-pipeline/csvprocessor/internal/alertclient"
 	"grpc-pipeline/csvprocessor/internal/config"
 	"grpc-pipeline/csvprocessor/internal/csvreader"
 	"grpc-pipeline/csvprocessor/internal/filemanager"
@@ -22,10 +23,10 @@ import (
 
 // ── Contadores globales (thread-safe) ────────────────────────────
 var (
-	totalProcessed  atomic.Int64
-	totalInserted   atomic.Int64
-	totalFailed     atomic.Int64
-	totalRetryOk    atomic.Int64
+	totalProcessed atomic.Int64
+	totalInserted  atomic.Int64
+	totalFailed    atomic.Int64
+	totalRetryOk   atomic.Int64
 )
 
 func main() {
@@ -46,6 +47,11 @@ func main() {
 	defer conn.Close()
 	client := pb.NewLogIngestionClient(conn)
 
+	// Crea el cliente de alertas para notificar a main-api cuando un archivo falla.
+	// Si INTERNAL_API_KEY está vacío en el .env, las alertas se loguearán pero no
+	// llegarán a main-api (útil para entornos de desarrollo sin main-api corriendo).
+	alerts := alertclient.New(cfg.MainAPIURL, cfg.InternalAPIKey)
+
 	// Canal de archivos pendientes — buffer generoso para no bloquear el watcher
 	fileChan := make(chan string, 500)
 
@@ -60,7 +66,9 @@ func main() {
 	for i := 0; i < cfg.NumWorkers; i++ {
 		go func(workerID int) {
 			for filePath := range fileChan {
-				processFile(filePath, cfg, client, &inProcess)
+				// Pasamos el cliente de alertas a processFile para que
+				// pueda notificar si el archivo agota todos sus reintentos.
+				processFile(filePath, cfg, client, &inProcess, alerts)
 				inProcess.Delete(filePath)
 			}
 		}(i)
@@ -106,7 +114,7 @@ func main() {
 		for {
 			time.Sleep(time.Duration(cfg.StatsIntervalSec) * time.Second)
 			pending, _ := filemanager.ListInputFiles(cfg.InputDir)
-			failed, _  := filemanager.ListInputFiles(cfg.FailedDir)
+			failed, _ := filemanager.ListInputFiles(cfg.FailedDir)
 			fmt.Printf("📊 stats | procesados: %d | insertados: %d | fallidos: %d | recuperados: %d | pendientes: %d | en failed: %d\n",
 				totalProcessed.Load(),
 				totalInserted.Load(),
@@ -123,10 +131,11 @@ func main() {
 }
 
 // processFile ejecuta el pipeline completo para un archivo con hasta 3 intentos.
-func processFile(filePath string, cfg config.Config, client pb.LogIngestionClient, inProcess *sync.Map) {
-	fileName  := filepath.Base(filePath)
-	isRetry   := filepath.Dir(filePath) == cfg.FailedDir
-	maxTries  := 3
+// Si agota todos los reintentos, envía una alerta a main-api con el detalle del error.
+func processFile(filePath string, cfg config.Config, client pb.LogIngestionClient, inProcess *sync.Map, alerts *alertclient.Client) {
+	fileName := filepath.Base(filePath)
+	isRetry := filepath.Dir(filePath) == cfg.FailedDir
+	maxTries := 3
 
 	for attempt := 1; attempt <= maxTries; attempt++ {
 		ok, inserted, dur, errMsg := runPipeline(filePath, cfg, client)
@@ -152,24 +161,33 @@ func processFile(filePath string, cfg config.Config, client pb.LogIngestionClien
 				fileName, attempt, maxTries, errMsg)
 			time.Sleep(200 * time.Millisecond)
 		} else {
-			// Agotó intentos
+			// Agotó todos los reintentos — registrar como fallido y alertar.
 			totalFailed.Add(1)
 			fmt.Printf("❌ %-25s | attempt %d/%d | %s\n",
 				fileName, attempt, maxTries, errMsg)
 
-			// Si no venía de failed_logs, moverlo ahí
+			// Si no venía de failed_logs, moverlo ahí para reintentar más tarde.
 			if !isRetry {
 				if err := filemanager.MoveToFailed(filePath, cfg.FailedDir); err != nil {
 					log.Printf("⚠️  no se pudo mover [%s] a failed_logs: %v", fileName, err)
 				}
 			}
+
+			// Notificar a main-api para que despache un correo a los administradores.
+			// Se ejecuta en goroutine para no bloquear el worker.
+			go alerts.EnviarAlerta("error_archivo", map[string]interface{}{
+				"archivo":  fileName,           // Nombre del archivo que falló.
+				"error":    errMsg,             // Descripción del último error.
+				"intentos": maxTries,           // Total de intentos realizados.
+				"carpeta":  "failed_logs",      // Dónde quedó el archivo.
+			})
 		}
 	}
 }
 
 // runPipeline ejecuta los 4 pasos del pipeline para un archivo.
 func runPipeline(filePath string, cfg config.Config, client pb.LogIngestionClient) (bool, int, time.Duration, string) {
-	start    := time.Now()
+	start := time.Now()
 	fileName := filepath.Base(filePath)
 
 	// 1. Leer

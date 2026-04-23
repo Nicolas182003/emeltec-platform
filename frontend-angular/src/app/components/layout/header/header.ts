@@ -10,7 +10,7 @@ import { AuthService } from '../../../services/auth.service';
   template: `
     <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-6">
       <div class="flex items-center gap-8">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 cursor-pointer" (click)="router.navigate(['/'])">
           <div class="w-8 h-8 bg-primary-container rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-white text-xl">monitoring</span>
           </div>
@@ -31,7 +31,7 @@ import { AuthService } from '../../../services/auth.service';
       
       <div class="flex items-center gap-2">
         <!-- Acceso Rápido a Usuarios -->
-        <button (click)="goToUsers()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 hover:text-primary-container transition-all tooltip" title="Gestión de Usuarios">
+        <button (click)="goToUsers()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 hover:text-primary-container transition-all" title="Gestión de Usuarios">
           <span class="material-symbols-outlined">group</span>
         </button>
 
@@ -53,6 +53,11 @@ import { AuthService } from '../../../services/auth.service';
           <div class="w-9 h-9 bg-primary-container/10 rounded-full flex items-center justify-center border border-primary-container/20">
             <span class="material-symbols-outlined text-primary-container">account_circle</span>
           </div>
+          
+          <!-- Botón de Cerrar Sesión -->
+          <button (click)="auth.logout()" class="ml-2 w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all" title="Cerrar Sesión">
+            <span class="material-symbols-outlined">logout</span>
+          </button>
         </div>
       </div>
     </header>
@@ -63,7 +68,6 @@ export class HeaderComponent {
   router = inject(Router);
 
   goToUsers() {
-    // Nos lleva a empresas y activa la pestaña de usuarios (podemos mejorar esto luego)
     this.router.navigate(['/companies']);
   }
 }

@@ -54,7 +54,7 @@ exports.sendWelcomeEmail = async (emailDestino, nombreCompleto, passwordGenerado
           <p>Hola <strong>${nombreCompleto}</strong>,</p>
           <p>Tu cuenta corporativa ha sido creada exitosamente. A continuación encontrarás tus credenciales de inicio de sesión iniciales:</p>
           <div style="background-color: #f8fafc; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <p><strong>URL de Acceso:</strong> <a href="http://localhost:5173/login">http://localhost:5173/login</a></p>
+            <p><strong>URL de Acceso:</strong> <a href="http://localhost:4200/login">http://localhost:4200/login</a></p>
             <p><strong>Usuario:</strong> ${emailDestino}</p>
             <p><strong>Contraseña Temporal:</strong> <span style="font-size: 1.2em; letter-spacing: 2px; color: #1e293b;">${passwordGenerado}</span></p>
           </div>

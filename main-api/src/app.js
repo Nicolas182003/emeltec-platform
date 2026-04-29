@@ -16,6 +16,7 @@ const metricsRoutes = require("./routes/metricsRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const companyRoutes = require("./routes/companyRoutes");
+const alertaRoutes = require("./routes/alertaRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
@@ -60,6 +61,7 @@ app.use("/api/metrics", metricsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
+app.use("/api/alertas", alertaRoutes);
 
 
 /* Servir archivos estáticos desde la carpeta demo */

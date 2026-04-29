@@ -8,6 +8,7 @@ const protoLoader = require("@grpc/proto-loader");
 
 const pool = require("../config/db");
 const { getLatestSerialId } = require("../utils/serial");
+const { formatUtcMinus3, parseUtcMinus3 } = require("../utils/timezone");
 const {
   trackRequest,
   getRequestMetrics,
@@ -153,8 +154,8 @@ async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) 
   const query = `
     SELECT
       id_serial,
-      TO_CHAR(time AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS fecha,
-      TO_CHAR(time AT TIME ZONE 'UTC', 'HH24:MI:SS') AS hora,
+      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
+      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora,
       data
     FROM equipo
     ${where}
@@ -175,8 +176,8 @@ async function getLatestReferenceTimestamp(serialId) {
   const { rows } = await pool.query(
     `
     SELECT
-      TO_CHAR(time AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS fecha,
-      TO_CHAR(time AT TIME ZONE 'UTC', 'HH24:MI:SS') AS hora
+      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
+      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora
     FROM equipo
     WHERE id_serial = $1
     ORDER BY time DESC
@@ -194,44 +195,12 @@ async function getLatestReferenceTimestamp(serialId) {
 
 // Interpreta fechas literales enviadas por el cliente gRPC.
 function parseTimestampLiteral(rawValue) {
-  if (!rawValue) {
-    return null;
-  }
-
-  const value = String(rawValue).trim().replace("T", " ").replace("Z", "");
-  const match = value.match(
-    /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/
-  );
-
-  if (!match) {
-    return null;
-  }
-
-  const [, year, month, day, hour = "00", minute = "00", second = "00"] = match;
-  const date = new Date(
-    Date.UTC(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hour),
-      Number(minute),
-      Number(second)
-    )
-  );
-
-  return Number.isNaN(date.getTime()) ? null : date;
+  return parseUtcMinus3(rawValue);
 }
 
 // Devuelve un timestamp normalizado en el formato que usan las consultas SQL.
 function formatTimestampLiteral(date) {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  const hour = String(date.getUTCHours()).padStart(2, "0");
-  const minute = String(date.getUTCMinutes()).padStart(2, "0");
-  const second = String(date.getUTCSeconds()).padStart(2, "0");
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  return formatUtcMinus3(date);
 }
 
 // Construye el rango from/to a partir de un preset y una fecha final.
@@ -514,8 +483,8 @@ async function getOnlineValues(call, callback) {
         latest.id_serial,
         latest.nombre_dato,
         latest.valor_dato,
-        TO_CHAR(latest.time AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS fecha,
-        TO_CHAR(latest.time AT TIME ZONE 'UTC', 'HH24:MI:SS') AS hora
+        TO_CHAR((latest.time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
+        TO_CHAR((latest.time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora
       FROM (
         SELECT DISTINCT ON (kv.key)
           lr.id_serial,

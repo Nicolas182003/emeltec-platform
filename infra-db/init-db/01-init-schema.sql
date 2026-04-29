@@ -65,6 +65,46 @@ CREATE TABLE IF NOT EXISTS reg_map (
     updated_at TIMESTAMPTZ   DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS alertas (
+    id               SERIAL        PRIMARY KEY,
+    nombre           VARCHAR(150)  NOT NULL,
+    descripcion      TEXT,
+    sitio_id         VARCHAR(10)   NOT NULL REFERENCES sitio(id) ON DELETE CASCADE,
+    empresa_id       VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id   VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    variable_key     VARCHAR(50)   NOT NULL,
+    condicion        VARCHAR(20)   NOT NULL
+                     CHECK (condicion IN ('mayor_que','menor_que','igual_a','fuera_rango','sin_datos')),
+    umbral_bajo      NUMERIC,
+    umbral_alto      NUMERIC,
+    severidad        VARCHAR(20)   NOT NULL DEFAULT 'media'
+                     CHECK (severidad IN ('baja','media','alta','critica')),
+    activa           BOOLEAN       NOT NULL DEFAULT TRUE,
+    cooldown_minutos INTEGER       NOT NULL DEFAULT 5,
+    dias_activos     TEXT[]        NOT NULL DEFAULT ARRAY['lunes','martes','miercoles','jueves','viernes','sabado','domingo'],
+    creado_por       VARCHAR(10)   REFERENCES usuario(id) ON DELETE SET NULL,
+    created_at       TIMESTAMPTZ   DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS alertas_eventos (
+    id               SERIAL        PRIMARY KEY,
+    alerta_id        INTEGER       NOT NULL REFERENCES alertas(id) ON DELETE CASCADE,
+    empresa_id       VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id   VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    sitio_id         VARCHAR(10)   NOT NULL REFERENCES sitio(id) ON DELETE CASCADE,
+    variable_key     VARCHAR(50)   NOT NULL,
+    valor_detectado  NUMERIC,
+    valor_texto      TEXT,
+    mensaje          TEXT          NOT NULL,
+    severidad        VARCHAR(20)   NOT NULL
+                     CHECK (severidad IN ('baja','media','alta','critica')),
+    notificado       BOOLEAN       NOT NULL DEFAULT FALSE,
+    resuelta         BOOLEAN       NOT NULL DEFAULT FALSE,
+    triggered_at     TIMESTAMPTZ   DEFAULT NOW(),
+    resuelta_at      TIMESTAMPTZ
+);
+
 -- -------------------------------------------
 -- Hypertable — series temporales
 -- Chunks: 1 día | ~80 equipos, hasta 1 dato/s
@@ -92,6 +132,10 @@ CREATE INDEX IF NOT EXISTS idx_equipo_data_gin    ON equipo USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_sitio_empresa      ON sitio (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_empresa    ON usuario (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_regmap_sitio       ON reg_map (sitio_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_sitio      ON alertas (sitio_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_id, resuelta, triggered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta_id, triggered_at DESC);
 
 -- -------------------------------------------
 -- Compresión automática (después de 7 días)

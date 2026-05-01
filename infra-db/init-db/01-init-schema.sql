@@ -1,5 +1,5 @@
 -- ===========================================
--- db_infra | Schema de inicializaciÃ³n
+-- db_infra | Schema de inicializacion
 -- TimescaleDB (PostgreSQL 16)
 -- ===========================================
 
@@ -109,8 +109,8 @@ CREATE TABLE IF NOT EXISTS alertas_eventos (
 );
 
 -- -------------------------------------------
--- Hypertable â€” series temporales
--- Chunks: 1 dÃ­a | ~80 equipos, hasta 1 dato/s
+-- Hypertable - series temporales
+-- Chunks: 1 dia | ~80 equipos, hasta 1 dato/s
 -- -------------------------------------------
 
 CREATE TABLE IF NOT EXISTS equipo (
@@ -127,7 +127,7 @@ SELECT create_hypertable(
 );
 
 -- -------------------------------------------
--- Ãndices
+-- Indices
 -- -------------------------------------------
 
 CREATE INDEX IF NOT EXISTS idx_equipo_serial_time ON equipo (id_serial, time DESC);
@@ -141,7 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta_id, triggered_at DESC);
 
 -- -------------------------------------------
--- CompresiÃ³n automÃ¡tica (despuÃ©s de 7 dÃ­as)
+-- Compresion automatica (despues de 7 dias)
 -- -------------------------------------------
 
 ALTER TABLE equipo SET (
@@ -156,10 +156,10 @@ SELECT add_compression_policy('equipo',
 );
 
 -- -------------------------------------------
--- Continuous Aggregates (dÃ­a, semana, mes, aÃ±o)
+-- Continuous Aggregates (dia, semana, mes, ano)
 -- -------------------------------------------
 
--- Por dÃ­a (refresca cada 1h)
+-- Por dia (refresca cada 1h)
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_daily
 WITH (timescaledb.continuous) AS
 SELECT time_bucket('1 day', time) AS bucket, id_serial, COUNT(*) AS total_registros
@@ -192,7 +192,7 @@ SELECT add_continuous_aggregate_policy('equipo_monthly',
     start_offset => INTERVAL '3 months', end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '12 hours', if_not_exists => TRUE);
 
--- Por aÃ±o (refresca cada 1d)
+-- Por ano (refresca cada 1d)
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_yearly
 WITH (timescaledb.continuous) AS
 SELECT time_bucket('1 year', time) AS bucket, id_serial, COUNT(*) AS total_registros
@@ -216,7 +216,7 @@ VALUES ('S100', 'Planta Principal - Sensor Temperatura', '151.65.22.2', 'E100', 
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, sitio_id)
-VALUES ('151.65.22.2', 'Temperatura Ambiente', 'REG1', NULL, 'FLOAT', 'TÂ°', 'S100')
+VALUES ('151.65.22.2', 'Temperatura Ambiente', 'REG1', NULL, 'FLOAT', 'degC', 'S100')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO equipo (time, id_serial, data) VALUES
@@ -224,6 +224,6 @@ INSERT INTO equipo (time, id_serial, data) VALUES
     (NOW() - INTERVAL '1 hour',  '151.65.22.2', '{"REG1": 1520, "REG4": 24.1, "IR1": "OK"}'::jsonb),
     (NOW(),                       '151.65.22.2', '{"REG1": 1480, "REG4": 22.8, "IR1": "WARN"}'::jsonb);
 
--- VerificaciÃ³n
+-- Verificacion
 SELECT hypertable_name, num_dimensions FROM timescaledb_information.hypertables
 WHERE hypertable_name = 'equipo';

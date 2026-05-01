@@ -12,9 +12,9 @@ import { AuthService } from '../../services/auth.service';
   template: `
     <div class="space-y-6 animate-in fade-in duration-300">
 
-      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-      <!-- Formulario de invitaciÃ³n: solo si NO es readOnly   -->
-      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <!-- ------------------------------------------- -->
+      <!-- Formulario de invitacion: solo si NO es readOnly -->
+      <!-- ------------------------------------------- -->
       @if (!readOnly) {
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
 
@@ -25,7 +25,7 @@ import { AuthService } from '../../services/auth.service';
             <div>
               <h2 class="text-lg font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
               <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
-                JerarquÃ­a Real: {{ companyName() }} / {{ subName() }}
+                Jerarquia Real: {{ companyName() }} / {{ subName() }}
               </p>
             </div>
           </div>
@@ -61,7 +61,7 @@ import { AuthService } from '../../services/auth.service';
                 </div>
 
                 <div class="space-y-1.5" [class.opacity-40]="newUser.tipo === 'Admin'">
-                  <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">DivisiÃ³n Asignada</label>
+                  <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Division Asignada</label>
                   <div class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-black flex items-center gap-2 shadow-sm"
                        [class.text-slate-400]="newUser.tipo === 'Admin'"
                        [class.text-primary-container]="newUser.tipo !== 'Admin'">
@@ -80,18 +80,18 @@ import { AuthService } from '../../services/auth.service';
               </div>
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Apellido *</label>
-                <input required [(ngModel)]="newUser.apellido" name="apellido" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm" placeholder="Ej. SÃ¡nchez" />
+                <input required [(ngModel)]="newUser.apellido" name="apellido" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm" placeholder="Ej. Sanchez" />
               </div>
               <div class="space-y-1.5">
                 <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">RUT del Usuario *</label>
                 <input required [(ngModel)]="newUser.rut_usuario" name="rut_usuario" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm" placeholder="12.345.678-9" />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">TelÃ©fono *</label>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Telefono *</label>
                 <input required [(ngModel)]="newUser.telefono" name="telefono" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm" placeholder="+56 9 ..." />
               </div>
               <div class="space-y-1.5 md:col-span-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Correo ElectrÃ³nico *</label>
+                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Correo Electronico *</label>
                 <input required type="email" [(ngModel)]="newUser.email" name="email" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm font-bold" placeholder="usuario@correo.com" />
               </div>
               <div class="space-y-1.5 md:col-span-2">
@@ -110,9 +110,9 @@ import { AuthService } from '../../services/auth.service';
         </div>
       }
 
-      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <!-- ------------------------------------------- -->
       <!-- Tabla de usuarios: siempre visible                 -->
-      <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+      <!-- ------------------------------------------- -->
       <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden" [class.mt-8]="!readOnly">
         <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <h3 class="text-xs font-black text-primary uppercase tracking-widest">
@@ -127,7 +127,7 @@ import { AuthService } from '../../services/auth.service';
               <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Email</th>
               <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">Rol</th>
               @if (!readOnly) {
-                <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">AcciÃ³n</th>
+                <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right">Accion</th>
               }
             </tr>
           </thead>
@@ -195,7 +195,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     const tree = this.companyService.hierarchy();
     const id = this.inputSubEmpresaId();
     const parentId = this.inputEmpresaId();
-    if (!id || tree.length === 0) return 'Buscando DivisiÃ³n...';
+    if (!id || tree.length === 0) return 'Buscando Division...';
 
     const emp = tree.find(e => e.id === parentId);
     const sub = emp?.subCompanies?.find((s: any) => s.id === id);
@@ -257,7 +257,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.userService.createUser(data).subscribe({
       next: (res: any) => {
         if (res.ok) {
-          this.status.set({ type: 'success', msg: 'InvitaciÃ³n enviada.' });
+          this.status.set({ type: 'success', msg: 'Invitacion enviada.' });
           this.loadUsers();
           this.resetForm();
         }
@@ -273,7 +273,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
   deleteUser(id: string) {
     if (this.readOnly) return; // Double protection
 
-    if (confirm('Â¿Eliminar este usuario?')) {
+    if (confirm('Eliminar este usuario?')) {
       this.userService.deleteUser(id).subscribe(() => this.loadUsers());
     }
   }

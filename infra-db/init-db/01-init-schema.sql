@@ -1,5 +1,5 @@
 -- ===========================================
--- db_infra | Schema de inicialización
+-- db_infra | Schema de inicializaciÃ³n
 -- TimescaleDB (PostgreSQL 16)
 -- ===========================================
 
@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS usuario (
     tipo           VARCHAR(30)   NOT NULL,
     empresa_id     VARCHAR(10)   REFERENCES empresa(id) ON DELETE SET NULL,
     sub_empresa_id VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    password_hash  VARCHAR(255),
+    otp_hash       VARCHAR(255),
+    otp_expires_at TIMESTAMPTZ,
     created_at     TIMESTAMPTZ   DEFAULT NOW(),
     updated_at     TIMESTAMPTZ   DEFAULT NOW()
 );
@@ -65,9 +68,49 @@ CREATE TABLE IF NOT EXISTS reg_map (
     updated_at TIMESTAMPTZ   DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS alertas (
+    id               SERIAL        PRIMARY KEY,
+    nombre           VARCHAR(150)  NOT NULL,
+    descripcion      TEXT,
+    sitio_id         VARCHAR(10)   NOT NULL REFERENCES sitio(id) ON DELETE CASCADE,
+    empresa_id       VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id   VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    variable_key     VARCHAR(50)   NOT NULL,
+    condicion        VARCHAR(20)   NOT NULL
+                     CHECK (condicion IN ('mayor_que','menor_que','igual_a','fuera_rango','sin_datos')),
+    umbral_bajo      NUMERIC,
+    umbral_alto      NUMERIC,
+    severidad        VARCHAR(20)   NOT NULL DEFAULT 'media'
+                     CHECK (severidad IN ('baja','media','alta','critica')),
+    activa           BOOLEAN       NOT NULL DEFAULT TRUE,
+    cooldown_minutos INTEGER       NOT NULL DEFAULT 5,
+    dias_activos     TEXT[]        NOT NULL DEFAULT ARRAY['lunes','martes','miercoles','jueves','viernes','sabado','domingo'],
+    creado_por       VARCHAR(10)   REFERENCES usuario(id) ON DELETE SET NULL,
+    created_at       TIMESTAMPTZ   DEFAULT NOW(),
+    updated_at       TIMESTAMPTZ   DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS alertas_eventos (
+    id               SERIAL        PRIMARY KEY,
+    alerta_id        INTEGER       NOT NULL REFERENCES alertas(id) ON DELETE CASCADE,
+    empresa_id       VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id   VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    sitio_id         VARCHAR(10)   NOT NULL REFERENCES sitio(id) ON DELETE CASCADE,
+    variable_key     VARCHAR(50)   NOT NULL,
+    valor_detectado  NUMERIC,
+    valor_texto      TEXT,
+    mensaje          TEXT          NOT NULL,
+    severidad        VARCHAR(20)   NOT NULL
+                     CHECK (severidad IN ('baja','media','alta','critica')),
+    notificado       BOOLEAN       NOT NULL DEFAULT FALSE,
+    resuelta         BOOLEAN       NOT NULL DEFAULT FALSE,
+    triggered_at     TIMESTAMPTZ   DEFAULT NOW(),
+    resuelta_at      TIMESTAMPTZ
+);
+
 -- -------------------------------------------
--- Hypertable — series temporales
--- Chunks: 1 día | ~80 equipos, hasta 1 dato/s
+-- Hypertable â€” series temporales
+-- Chunks: 1 dÃ­a | ~80 equipos, hasta 1 dato/s
 -- -------------------------------------------
 
 CREATE TABLE IF NOT EXISTS equipo (
@@ -84,7 +127,7 @@ SELECT create_hypertable(
 );
 
 -- -------------------------------------------
--- Índices
+-- Ãndices
 -- -------------------------------------------
 
 CREATE INDEX IF NOT EXISTS idx_equipo_serial_time ON equipo (id_serial, time DESC);
@@ -92,9 +135,13 @@ CREATE INDEX IF NOT EXISTS idx_equipo_data_gin    ON equipo USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_sitio_empresa      ON sitio (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_empresa    ON usuario (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_regmap_sitio       ON reg_map (sitio_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_sitio      ON alertas (sitio_id);
+CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_id, resuelta, triggered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta_id, triggered_at DESC);
 
 -- -------------------------------------------
--- Compresión automática (después de 7 días)
+-- CompresiÃ³n automÃ¡tica (despuÃ©s de 7 dÃ­as)
 -- -------------------------------------------
 
 ALTER TABLE equipo SET (
@@ -109,10 +156,10 @@ SELECT add_compression_policy('equipo',
 );
 
 -- -------------------------------------------
--- Continuous Aggregates (día, semana, mes, año)
+-- Continuous Aggregates (dÃ­a, semana, mes, aÃ±o)
 -- -------------------------------------------
 
--- Por día (refresca cada 1h)
+-- Por dÃ­a (refresca cada 1h)
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_daily
 WITH (timescaledb.continuous) AS
 SELECT time_bucket('1 day', time) AS bucket, id_serial, COUNT(*) AS total_registros
@@ -145,7 +192,7 @@ SELECT add_continuous_aggregate_policy('equipo_monthly',
     start_offset => INTERVAL '3 months', end_offset => INTERVAL '1 hour',
     schedule_interval => INTERVAL '12 hours', if_not_exists => TRUE);
 
--- Por año (refresca cada 1d)
+-- Por aÃ±o (refresca cada 1d)
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_yearly
 WITH (timescaledb.continuous) AS
 SELECT time_bucket('1 year', time) AS bucket, id_serial, COUNT(*) AS total_registros
@@ -169,7 +216,7 @@ VALUES ('S100', 'Planta Principal - Sensor Temperatura', '151.65.22.2', 'E100', 
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, sitio_id)
-VALUES ('151.65.22.2', 'Temperatura Ambiente', 'REG1', NULL, 'FLOAT', 'T°', 'S100')
+VALUES ('151.65.22.2', 'Temperatura Ambiente', 'REG1', NULL, 'FLOAT', 'TÂ°', 'S100')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO equipo (time, id_serial, data) VALUES
@@ -177,6 +224,6 @@ INSERT INTO equipo (time, id_serial, data) VALUES
     (NOW() - INTERVAL '1 hour',  '151.65.22.2', '{"REG1": 1520, "REG4": 24.1, "IR1": "OK"}'::jsonb),
     (NOW(),                       '151.65.22.2', '{"REG1": 1480, "REG4": 22.8, "IR1": "WARN"}'::jsonb);
 
--- Verificación
+-- VerificaciÃ³n
 SELECT hypertable_name, num_dimensions FROM timescaledb_information.hypertables
 WHERE hypertable_name = 'equipo';

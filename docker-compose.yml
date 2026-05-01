@@ -55,6 +55,7 @@ services:
       DB_PASSWORD: admin_password
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
+      AUTH_API_URL: http://auth-api:3001
     depends_on:
       timescaledb:
         condition: service_healthy

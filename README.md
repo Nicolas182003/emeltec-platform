@@ -45,6 +45,13 @@ ng test
 ```
 
 ## Running end-to-end tests
+## Deploy a Produccion
+
+El repo incluye un flujo de GitHub Actions para desplegar automaticamente a la VM de Azure cuando haces push a `main`.
+
+Documentacion: [`docs/deployment.md`](docs/deployment.md)
+
+## Verificación Antes de Subir Cambios
 
 For end-to-end (e2e) testing, run:
 
@@ -57,3 +64,13 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+| Capa | Tecnologia |
+|---|---|
+| Frontend | Angular 21 + TailwindCSS |
+| Frontend server | Nginx |
+| Backend principal | Node.js + Express |
+| Auth | Node.js + Express + JWT + bcrypt |
+| Base de datos | TimescaleDB/PostgreSQL |
+| Correos | Resend |
+| Pipeline | Go + gRPC |
+| Contenedores | Docker Compose |

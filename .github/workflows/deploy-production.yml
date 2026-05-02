@@ -1,0 +1,79 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare example env file
+        run: cp main-api/.env.example main-api/.env
+
+      - name: Validate compose file
+        run: docker compose config --quiet
+
+      - name: Build application images
+        run: docker compose build main-api auth-api frontend-angular metrics-page csvconsumer
+
+  deploy:
+    name: Deploy to Azure VM
+    runs-on: ubuntu-latest
+    needs: validate
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check deployment secrets
+        id: deployment
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          VM_USER: ${{ secrets.AZURE_VM_USER }}
+        run: |
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$VM_HOST" ] || [ -z "$VM_USER" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Deployment secrets are not configured yet. Skipping remote deploy."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure SSH
+        if: steps.deployment.outputs.configured == 'true'
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.AZURE_VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+        run: |
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$VM_HOST"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/emeltec_production
+          chmod 600 ~/.ssh/emeltec_production
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Run remote deploy
+        if: steps.deployment.outputs.configured == 'true'
+        env:
+          VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+          VM_USER: ${{ secrets.AZURE_VM_USER }}
+          VM_APP_DIR: ${{ secrets.AZURE_VM_APP_DIR }}
+        run: |
+          test -n "$VM_HOST"
+          test -n "$VM_USER"
+          APP_DIR_REMOTE="${VM_APP_DIR:-/opt/emeltec-platform}"
+          ssh -i ~/.ssh/emeltec_production "$VM_USER@$VM_HOST" \
+            "APP_DIR='$APP_DIR_REMOTE' BRANCH='main' bash -s" < scripts/deploy-production.sh

@@ -223,6 +223,12 @@ docker compose logs -f auth-api
 docker compose logs -f frontend-angular
 ```
 
+## Deploy a Produccion
+
+El repo incluye un flujo de GitHub Actions para desplegar automaticamente a la VM de Azure cuando haces push a `main`.
+
+Documentacion: [`docs/deployment.md`](docs/deployment.md)
+
 ## Verificación Antes de Subir Cambios
 
 ```bash

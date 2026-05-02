@@ -5,6 +5,7 @@ APP_DIR="${APP_DIR:-/opt/emeltec-platform}"
 BRANCH="${BRANCH:-main}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 HEALTHCHECK_URLS="${HEALTHCHECK_URLS:-http://127.0.0.1:5173}"
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-emeltec-platform}"
 
 cd "$APP_DIR"
 

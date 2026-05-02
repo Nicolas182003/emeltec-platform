@@ -1,22 +1,3 @@
 {
-  "permissions": {
-    "allow": [
-      "Bash(git ls-tree *)",
-      "Bash(git checkout *)",
-      "Bash(git fetch *)",
-      "Read(//tmp/**)",
-      "Bash(npm install *)",
-      "Bash(docker-compose up *)",
-      "Bash(curl -s http://localhost:3000/api/health)",
-      "Bash(curl -s http://localhost:3000/api/status)",
-      "Bash(curl -s http://localhost:3001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')",
-      "Bash(node src/seed_full.js)",
-      "Bash(docker exec *)",
-      "PowerShell(docker exec emeltec-frontend *)",
-      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\cidm3\\\\emeltec-platform-nicolas\\\\frontend-angular\\\\src\" -Recurse | ForEach-Object { $_.FullName } | Select-Object -First 60)",
-      "Bash(docker compose *)",
-      "Bash(python -m json.tool)",
-      "Bash(curl -s http://localhost:3001/api/health)"
-    ]
-  }
+  "prefersReducedMotion": true
 }

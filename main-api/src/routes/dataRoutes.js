@@ -12,7 +12,7 @@ const {
   getByPreset,
   getAvailableKeys,
   getOnlineValues,
-} = require("../controllers/Datacontroller");
+} = require("../controllers/dataController");
 
 router.post("/", insertData);
 router.get("/", getData);

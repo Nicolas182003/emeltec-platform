@@ -45,7 +45,7 @@ main-api/
     ├── controllers/
     │   ├── authController.js    → Login y generación de códigos OTP
     │   ├── userController.js    → Creación de usuarios y listado de empresas
-    │   ├── Datacontroller.js    → Lectura de datos de telemetría
+    │   ├── dataController.js    → Lectura de datos de telemetría
     │   ├── catalogController.js → Catálogos (empresas, equipos)
     │   └── metricsController.js → Métricas calculadas
     ├── middlewares/

@@ -23,8 +23,6 @@ services:
     container_name: emeltec-auth
     ports:
       - "3001:3001"
-    env_file:
-      - ./auth-api/.env
     environment:
       DB_HOST: timescaledb
       DB_PORT: 5432
@@ -55,19 +53,19 @@ services:
       DB_PASSWORD: admin_password
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
-      AUTH_API_URL: http://auth-api:3001
     depends_on:
       timescaledb:
         condition: service_healthy
     restart: unless-stopped
 
-  frontend-app:
-    build: ./frontend-app
+  frontend-angular:
+    build: ./frontend-angular
     container_name: emeltec-frontend
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       - main-api
+      - auth-api
     restart: unless-stopped
 
   csvconsumer:

@@ -118,8 +118,8 @@ exports.requestCode = async (req, res, next) => {
 
     const usr = result.rows[0];
 
-    // 2. Generar Código Numérico de 6 dígitos
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // 2. Generar Código Alfanumérico de 6 caracteres
+    const otpCode = crypto.randomBytes(3).toString('hex').toUpperCase();
     const saltRounds = 10;
     const otpHash = await bcrypt.hash(otpCode, saltRounds);
     const expiresAt = new Date(Date.now() + minutes * 60 * 1000);

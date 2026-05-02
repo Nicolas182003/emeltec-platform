@@ -6,10 +6,12 @@ async function seed() {
   try {
     console.log("Iniciando migración y siembra de seguridad...");
 
-    // 1. Añadir columna si no existe
+    // 1. Añadir columnas si no existen
     await db.query(`
       ALTER TABLE usuario 
-      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+      ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ;
     `);
     console.log("Columna password_hash verificada en usuario.");
 

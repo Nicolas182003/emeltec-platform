@@ -123,7 +123,8 @@ exports.requestCode = async (req, res, next) => {
     }
 
     const usr       = result.rows[0];
-    const otpCode   = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const OTP_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const otpCode   = Array.from({ length: 6 }, () => OTP_CHARS[Math.floor(Math.random() * OTP_CHARS.length)]).join('');
     const otpHash   = await bcrypt.hash(otpCode, 10);
     const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
 

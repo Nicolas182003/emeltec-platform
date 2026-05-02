@@ -3,7 +3,8 @@ const cors       = require('cors');
 const helmet     = require('helmet');
 const morgan     = require('morgan');
 const rateLimit  = require('express-rate-limit');
-const authRoutes = require('./routes/authRoutes');
+const authRoutes   = require('./routes/authRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 
 const app = express();
@@ -21,6 +22,7 @@ const authLimiter = rateLimit({
   message: { ok: false, message: 'Demasiados intentos. Espera 15 minutos.' },
 });
 
+app.use('/api/health', healthRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 
 app.use(errorMiddleware);

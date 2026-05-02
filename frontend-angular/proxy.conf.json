@@ -1,4 +1,9 @@
 {
+  "/api/auth": {
+    "target": "http://localhost:3001",
+    "secure": false,
+    "changeOrigin": true
+  },
   "/api": {
     "target": "https://nuevacloud.emeltec.cl",
     "secure": true,

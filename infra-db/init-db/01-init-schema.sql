@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS sitio (
     descripcion VARCHAR(255)  NOT NULL,
     id_serial   VARCHAR(50)   NOT NULL,
     empresa_id  VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id VARCHAR(10) NOT NULL REFERENCES sub_empresa(id) ON DELETE CASCADE,
     ubicacion   VARCHAR(255),
     created_at  TIMESTAMPTZ   DEFAULT NOW(),
     updated_at  TIMESTAMPTZ   DEFAULT NOW()
@@ -133,6 +134,7 @@ SELECT create_hypertable(
 CREATE INDEX IF NOT EXISTS idx_equipo_serial_time ON equipo (id_serial, time DESC);
 CREATE INDEX IF NOT EXISTS idx_equipo_data_gin    ON equipo USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_sitio_empresa      ON sitio (empresa_id);
+CREATE INDEX IF NOT EXISTS idx_sitio_sub_empresa  ON sitio (sub_empresa_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_empresa    ON usuario (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_regmap_sitio       ON reg_map (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);
@@ -211,8 +213,12 @@ INSERT INTO empresa (id, nombre, rut, sitios, tipo_empresa)
 VALUES ('E100', 'Empresa Demo SpA', '76.123.456-7', 2, 'Industrial')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO sitio (id, descripcion, id_serial, empresa_id, ubicacion)
-VALUES ('S100', 'Planta Principal - Sensor Temperatura', '151.65.22.2', 'E100', 'Santiago, Chile')
+INSERT INTO sub_empresa (id, nombre, rut, sitios, empresa_id)
+VALUES ('SE101', 'Division Norte', '76.123.456-1', 1, 'E100')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion)
+VALUES ('S100', 'Planta Principal - Sensor Temperatura', '151.65.22.2', 'E100', 'SE101', 'Santiago, Chile')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, sitio_id)

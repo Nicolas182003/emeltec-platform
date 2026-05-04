@@ -73,7 +73,8 @@ async function seed() {
         ('SE201', 'Faena Atacama',         '77.234.567-1', 2, 'E200'),
         ('SE202', 'Planta Procesamiento',  '77.234.567-2', 1, 'E200'),
         ('SE301', 'Centro Cultivo Norte',  '78.345.678-1', 1, 'E300'),
-        ('SE302', 'Centro Cultivo Sur',    '78.345.678-2', 1, 'E300')
+        ('SE302', 'Centro Cultivo Sur',    '78.345.678-2', 1, 'E300'),
+        ('SE401', 'Operacion Valle Verde', '79.456.789-1', 1, 'E400')
       ON CONFLICT (id) DO UPDATE SET
         nombre = EXCLUDED.nombre,
         updated_at = NOW()
@@ -84,17 +85,19 @@ async function seed() {
     // ─────────────────────────────────────────────
     console.log('[3/7] Sitios...');
     await db.query(`
-      INSERT INTO sitio (id, descripcion, id_serial, empresa_id, ubicacion) VALUES
-        ('S100', 'Planta Principal — Temperatura',  '151.65.22.2',  'E100', 'Santiago, Región Metropolitana'),
-        ('S101', 'Subestación Norte — Energía',     '151.65.22.3',  'E100', 'Santiago Norte, R.M.'),
-        ('S200', 'Mina Nivel 1 — Ventilación',      '192.168.10.5', 'E200', 'Copiapó, Atacama'),
-        ('S201', 'Planta Procesadora — Molienda',   '192.168.10.6', 'E200', 'Copiapó, Atacama'),
-        ('S202', 'Campamento — Energía',             '192.168.10.7', 'E200', 'Copiapó, Atacama'),
-        ('S300', 'Estanques Norte — Oxigenación',   '10.0.1.20',    'E300', 'Puerto Montt, Los Lagos'),
-        ('S301', 'Estanques Sur — pH',              '10.0.1.21',    'E300', 'Puerto Montt, Los Lagos'),
-        ('S400', 'Bodega Central — Temperatura',    '172.16.0.50',  'E400', 'Rancagua, O''Higgins')
+      INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion) VALUES
+        ('S100', 'Planta Principal — Temperatura',  '151.65.22.2',  'E100', 'SE101', 'Santiago, Región Metropolitana'),
+        ('S101', 'Subestación Norte — Energía',     '151.65.22.3',  'E100', 'SE102', 'Santiago Norte, R.M.'),
+        ('S200', 'Mina Nivel 1 — Ventilación',      '192.168.10.5', 'E200', 'SE201', 'Copiapó, Atacama'),
+        ('S201', 'Planta Procesadora — Molienda',   '192.168.10.6', 'E200', 'SE202', 'Copiapó, Atacama'),
+        ('S202', 'Campamento — Energía',             '192.168.10.7', 'E200', 'SE201', 'Copiapó, Atacama'),
+        ('S300', 'Estanques Norte — Oxigenación',   '10.0.1.20',    'E300', 'SE301', 'Puerto Montt, Los Lagos'),
+        ('S301', 'Estanques Sur — pH',              '10.0.1.21',    'E300', 'SE302', 'Puerto Montt, Los Lagos'),
+        ('S400', 'Bodega Central — Temperatura',    '172.16.0.50',  'E400', 'SE401', 'Rancagua, O''Higgins')
       ON CONFLICT (id) DO UPDATE SET
         descripcion = EXCLUDED.descripcion,
+        empresa_id = EXCLUDED.empresa_id,
+        sub_empresa_id = EXCLUDED.sub_empresa_id,
         ubicacion = EXCLUDED.ubicacion,
         updated_at = NOW()
     `);
@@ -146,7 +149,7 @@ async function seed() {
       { email: 'diego.fuentes@minera.cl',     nombre: 'Diego',      apellido: 'Fuentes',    tipo: 'Cliente',    empresa: 'E200', sub: 'SE202', cargo: 'Operador Planta',      tel: '+56900000003' },
       { email: 'valentina.rios@acuicola.cl',  nombre: 'Valentina',  apellido: 'Ríos',       tipo: 'Cliente',    empresa: 'E300', sub: 'SE301', cargo: 'Técnica Acuicultura',  tel: '+56900000002' },
       { email: 'carlos.mendoza@acuicola.cl',  nombre: 'Carlos',     apellido: 'Mendoza',    tipo: 'Cliente',    empresa: 'E300', sub: 'SE302', cargo: 'Buzo Técnico',         tel: '+56900000005' },
-      { email: 'patricia.herrera@agro.cl',    nombre: 'Patricia',   apellido: 'Herrera',    tipo: 'Cliente',    empresa: 'E400', sub: null,    cargo: 'Supervisora General',  tel: '+56900000004' },
+      { email: 'patricia.herrera@agro.cl',    nombre: 'Patricia',   apellido: 'Herrera',    tipo: 'Cliente',    empresa: 'E400', sub: 'SE401', cargo: 'Supervisora General',  tel: '+56900000004' },
     ];
 
     for (const u of users) {
@@ -178,13 +181,13 @@ async function seed() {
     await db.query(`
       INSERT INTO alertas (nombre, descripcion, sitio_id, empresa_id, sub_empresa_id, variable_key, condicion, umbral_bajo, umbral_alto, severidad, activa, cooldown_minutos) VALUES
         ('Temperatura Alta Planta',   'Temperatura de planta supera 30°C (REG1>3000)',        'S100','E100','SE101','REG1','mayor_que', NULL, 3000, 'alta',    true, 10),
-        ('Voltaje Bajo Red',          'Voltaje de red cae bajo 200V',                         'S100','E100','SE102','REG4','menor_que', 200,  NULL, 'critica', true, 5),
+        ('Voltaje Bajo Red',          'Voltaje de red cae bajo 200V',                         'S100','E100','SE101','REG4','menor_que', 200,  NULL, 'critica', true, 5),
         ('Oxígeno Bajo Mina',         'Nivel de oxígeno en mina bajo el 19.5% mínimo seguro', 'S200','E200','SE201','OXY1','menor_que', 19.5, NULL, 'critica', true, 5),
         ('CO Peligroso',              'Monóxido de carbono sobre 25 ppm en zona de trabajo',  'S200','E200','SE201','CO1', 'mayor_que', NULL, 25,   'critica', true, 5),
         ('Vibración Excesiva Molino', 'Vibración del molino supera 10 mm/s',                  'S201','E200','SE202','VIB1','mayor_que', NULL, 10,   'alta',    true, 15),
         ('O2 Bajo Estanques',         'Oxígeno disuelto en estanques bajo 6 mg/L',            'S300','E300','SE301','OXY2','menor_que', 6.0,  NULL, 'alta',    true, 10),
         ('pH Fuera de Rango',         'pH del agua fuera del rango óptimo acuícola 6.5–8.5',  'S301','E300','SE302','PH1', 'fuera_rango', 6.5, 8.5,'media',   true, 20),
-        ('Temperatura Bodega Alta',   'Temperatura de bodega supera 25°C',                    'S400','E400', NULL,  'TMP2','mayor_que', NULL, 25,   'media',   true, 30)
+        ('Temperatura Bodega Alta',   'Temperatura de bodega supera 25°C',                    'S400','E400','SE401','TMP2','mayor_que', NULL, 25,   'media',   true, 30)
     `);
 
     // ─────────────────────────────────────────────

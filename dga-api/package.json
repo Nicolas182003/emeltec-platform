@@ -1,0 +1,22 @@
+{
+  "name": "dga-api",
+  "version": "1.0.0",
+  "description": "Servicio de reportes DGA de Emeltec",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.7.9",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "node-cron": "^3.0.3",
+    "pg": "^8.20.0"
+  }
+}

@@ -18,12 +18,23 @@ const userRoutes     = require("./routes/userRoutes");
 const companyRoutes  = require("./routes/companyRoutes");
 const alertaRoutes   = require("./routes/alertaRoutes");
 const internalRoutes = require("./routes/internalRoutes");
+const pozosRoutes   = require("./routes/pozosRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
 
 // Capa basica de seguridad HTTP.
-app.use(helmet());
+// En desarrollo la demo estatica usa handlers inline para pruebas manuales.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "script-src-attr": ["'unsafe-inline'"],
+      },
+    },
+  })
+);
 
 const allowedOrigins = (process.env.CORS_ORIGIN || "*")
   .split(",")
@@ -64,6 +75,7 @@ app.use("/api/internal", internalRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/alertas", alertaRoutes);
+app.use("/api/pozos", pozosRoutes);
 
 
 /* Servir archivos estáticos desde la carpeta demo */

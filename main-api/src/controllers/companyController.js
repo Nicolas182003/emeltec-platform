@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const db = require('../config/db');
+const { registrarAuditoria } = require('../utils/audit');
 
 const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
 const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
@@ -366,6 +367,17 @@ exports.createCompany = async (req, res, next) => {
 
     await client.query('COMMIT');
 
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'crear',
+      entidad:       'empresa',
+      entidad_id:    rows[0].id,
+      detalle:       { nombre, rut, tipo_empresa: tipoEmpresa },
+    });
+
     res.status(201).json({
       ok: true,
       message: 'Empresa creada correctamente.',
@@ -420,6 +432,17 @@ exports.createSubCompany = async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'crear',
+      entidad:       'sub_empresa',
+      entidad_id:    rows[0].id,
+      detalle:       { nombre, rut, empresa_id: empresaId },
+    });
 
     res.status(201).json({
       ok: true,
@@ -508,6 +531,17 @@ exports.createSite = async (req, res, next) => {
     );
 
     await client.query('COMMIT');
+
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'crear',
+      entidad:       'sitio',
+      entidad_id:    rows[0].id,
+      detalle:       { descripcion, id_serial: idSerial, tipo_sitio: tipoSitio, empresa_id: empresaId, sub_empresa_id: subEmpresaId },
+    });
 
     res.status(201).json({
       ok: true,
@@ -623,6 +657,17 @@ exports.updateSite = async (req, res, next) => {
     } finally {
       client.release();
     }
+
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'actualizar',
+      entidad:       'sitio',
+      entidad_id:    siteId,
+      detalle:       req.body,
+    });
 
     res.json({
       ok: true,
@@ -812,6 +857,17 @@ exports.createSiteVariableMap = async (req, res, next) => {
       [id, alias, d1, d2, tipoDato, unidad, rolDashboard, transformacion, JSON.stringify(parametros), siteId]
     );
 
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'crear',
+      entidad:       'variable',
+      entidad_id:    rows[0].id,
+      detalle:       { alias, d1, sitio_id: siteId },
+    });
+
     res.status(201).json({
       ok: true,
       message: 'Variable mapeada correctamente.',
@@ -914,6 +970,17 @@ exports.updateSiteVariableMap = async (req, res, next) => {
       params
     );
 
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'actualizar',
+      entidad:       'variable',
+      entidad_id:    mapId,
+      detalle:       req.body,
+    });
+
     res.json({
       ok: true,
       message: 'Mapeo actualizado correctamente.',
@@ -951,6 +1018,17 @@ exports.deleteSiteVariableMap = async (req, res, next) => {
     if (!rowCount) {
       return notFound(res, 'Mapeo no encontrado para este sitio.');
     }
+
+    registrarAuditoria({
+      usuario_id:    req.user.id,
+      usuario_email: req.user.email,
+      usuario_tipo:  req.user.tipo,
+      req,
+      accion:        'eliminar',
+      entidad:       'variable',
+      entidad_id:    mapId,
+      detalle:       { sitio_id: siteId },
+    });
 
     res.json({ ok: true, message: 'Mapeo eliminado correctamente.' });
   } catch (err) {

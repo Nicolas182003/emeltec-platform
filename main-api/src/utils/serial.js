@@ -4,14 +4,14 @@
 async function getLatestSerialId(pool) {
   const { rows } = await pool.query(
     `
-    SELECT id_serial
-    FROM equipo
-    ORDER BY time DESC
+    SELECT serial_id
+    FROM ts_pozos
+    ORDER BY ts DESC
     LIMIT 1
     `
   );
 
-  return rows[0]?.id_serial || null;
+  return rows[0]?.serial_id || null;
 }
 
 module.exports = {

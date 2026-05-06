@@ -2,6 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
+const { registrarAuditoria } = require('../utils/audit');
 
 exports.getEmpresas = async (req, res, next) => {
   try {
@@ -122,6 +123,17 @@ exports.createUser = async (req, res, next) => {
       console.error('Error al enviar correo:', err);
     });
 
+    registrarAuditoria({
+      usuario_id:    currentUser.id,
+      usuario_email: currentUser.email,
+      usuario_tipo:  currentUser.tipo,
+      accion:        'crear',
+      entidad:       'usuario',
+      entidad_id:    rows[0].id,
+      detalle:       { nombre, apellido, email, tipo, empresa_id: finalEmpresaId },
+      req,
+    });
+
     res.status(201).json({
       ok: true,
       message: `Usuario ${nombre} ${apellido} creado. Código de acceso enviado a ${email}.`,
@@ -162,6 +174,17 @@ exports.deleteUser = async (req, res, next) => {
     }
 
     await db.query('DELETE FROM usuario WHERE id = $1', [id]);
+
+    registrarAuditoria({
+      usuario_id:    currentUser.id,
+      usuario_email: currentUser.email,
+      usuario_tipo:  currentUser.tipo,
+      accion:        'eliminar',
+      entidad:       'usuario',
+      entidad_id:    id,
+      req,
+    });
+
     res.json({ ok: true, message: 'Usuario eliminado' });
   } catch (err) {
     next(err);

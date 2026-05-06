@@ -296,6 +296,10 @@ async function getNivelFreatico(req, res, next) {
     return res.json({
       ok: true,
       serial_id: serialId,
+      fecha: rows[0].fecha,
+      hora:  rows[0].hora,
+      lectura_sensor_m: lecturaPozo,
+      nivel_freatico_m,
       profundidad_total_m: profTotal,
     });
   } catch (err) {

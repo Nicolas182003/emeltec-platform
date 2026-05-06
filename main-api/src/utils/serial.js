@@ -1,5 +1,5 @@
 /**
- * Resuelve el serial del registro mas reciente disponible en log_records.
+ * Resuelve el serial del registro mas reciente disponible en equipo.
  */
 async function getLatestSerialId(pool) {
   const { rows } = await pool.query(
@@ -11,7 +11,7 @@ async function getLatestSerialId(pool) {
     `
   );
 
-  return rows[0]?.serial_id || null;
+  return rows[0]?.serial_id || rows[0]?.id_serial || null;
 }
 
 module.exports = {

@@ -1,76 +1,153 @@
-# FrontendAngular
+# Emeltec Platform
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
+Emeltec Platform es una plataforma web para monitoreo industrial, administracion de empresas, gestion de usuarios, visualizacion de instalaciones y procesamiento de datos operativos.
 
-## Development server
+El proyecto esta pensado para ejecutarse como una aplicacion compuesta por varios servicios Docker: un frontend Angular, APIs Node.js, una base de datos TimescaleDB/PostgreSQL, un pipeline gRPC y configuracion de infraestructura para publicar el sistema en una VM Linux.
 
-To start a local development server, run:
+## Objetivo
 
-```bash
-ng serve
-```
+La plataforma centraliza informacion de instalaciones industriales y permite operar modulos como:
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+- Consumo de agua.
+- Generacion de riles.
+- Variables de proceso.
+- Consumo electrico.
+- Maletas piloto.
+- Administracion de usuarios, empresas, sitios e instalaciones.
 
-## Code scaffolding
+El frontend consume APIs internas mediante rutas relativas (`/api/...`). En local esas rutas se resuelven con el proxy de Angular y en produccion se resuelven mediante Nginx y Docker dentro de la VM.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Arquitectura
 
-```bash
-ng generate component component-name
-```
+| Capa | Tecnologia | Descripcion |
+|---|---|---|
+| Frontend | Angular | Interfaz web principal de la plataforma. |
+| API principal | Node.js + Express | Gestion de empresas, sitios, usuarios, datos y consultas operativas. |
+| Auth API | Node.js + Express | Autenticacion, JWT, usuarios y codigos de acceso. |
+| Base de datos | TimescaleDB/PostgreSQL | Persistencia relacional y datos de telemetria. |
+| Pipeline | Go + gRPC | Procesamiento e ingestion de datos. |
+| Proxy/servidor web | Nginx | Publicacion del frontend y enrutamiento de APIs en produccion. |
+| Deploy | Docker Compose + GitHub Actions | Construccion, reinicio y despliegue automatico en VM. |
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Estructura del repositorio
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-## Deploy a Produccion
-
-El repo incluye un flujo de GitHub Actions para desplegar automaticamente a la VM de Azure cuando haces push a `main`.
-
-Documentacion: [`docs/deployment.md`](docs/deployment.md)
-
-## Verificación Antes de Subir Cambios
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-| Capa | Tecnologia |
+| Ruta | Proposito |
 |---|---|
-| Frontend | Angular 21 + TailwindCSS |
-| Frontend server | Nginx |
-| Backend principal | Node.js + Express |
-| Auth | Node.js + Express + JWT + bcrypt |
-| Base de datos | TimescaleDB/PostgreSQL |
-| Correos | Resend |
-| Pipeline | Go + gRPC |
-| Contenedores | Docker Compose |
+| `frontend-angular/` | Frontend oficial Angular. Es el unico frontend usado por Docker Compose y GitHub Actions. |
+| `main-api/` | API principal de la plataforma. |
+| `auth-api/` | Servicio de autenticacion. |
+| `grpc-pipeline/` | Servicios Go/gRPC para procesamiento de datos. |
+| `metrics-page/` | Pagina liviana de metricas operativas. |
+| `infra-db/` | Scripts de inicializacion y migraciones de base de datos. |
+| `infra-nginx/` | Configuracion Nginx usada en la VM. |
+| `scripts/` | Scripts operativos, incluido el deploy remoto. |
+| `docs/` | Documentacion tecnica del proyecto. |
+
+## Requisitos
+
+- Git.
+- Node.js compatible con Angular 21.
+- npm.
+- Docker Desktop o Docker Engine.
+- Docker Compose.
+
+## Configuracion local
+
+Antes de levantar los servicios, crea el archivo de entorno local para las APIs:
+
+```bash
+cp main-api/.env.example main-api/.env
+```
+
+Edita `main-api/.env` con los valores que correspondan para tu ambiente. Ese archivo tambien alimenta a `auth-api` dentro de Docker Compose, por lo que valores como `JWT_SECRET` e `INTERNAL_API_KEY` deben mantenerse consistentes.
+
+## Levantar todo en local
+
+Desde la raiz del repositorio:
+
+```bash
+docker compose up -d --build
+```
+
+Servicios principales:
+
+| Servicio | URL local |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| Main API | `http://localhost:3000` |
+| Auth API | `http://localhost:3001` |
+| Metrics page | `http://localhost:8081` |
+| PostgreSQL/TimescaleDB | `localhost:5433` |
+
+Para revisar el estado:
+
+```bash
+docker compose ps
+```
+
+Para ver logs:
+
+```bash
+docker compose logs -f main-api
+docker compose logs -f auth-api
+docker compose logs -f frontend-angular
+```
+
+Para detener el ambiente:
+
+```bash
+docker compose down
+```
+
+## Desarrollo del frontend
+
+Tambien puedes trabajar solo el frontend con el servidor de desarrollo de Angular. En ese modo las llamadas `/api/...` se redirigen a los servicios locales definidos en `frontend-angular/proxy.conf.json`.
+
+```bash
+cd frontend-angular
+npm install
+npm start
+```
+
+Luego abre:
+
+```text
+http://localhost:4200
+```
+
+Para que el frontend funcione correctamente en este modo, las APIs locales deben estar levantadas.
+
+## Validacion
+
+Build del frontend:
+
+```bash
+cd frontend-angular
+npm run build -- --configuration=production
+```
+
+Validar Docker Compose desde la raiz:
+
+```bash
+docker compose config --quiet
+```
+
+## Produccion y VM
+
+Produccion esta pensada para ejecutarse en una VM Linux con Docker Compose. El deploy se realiza automaticamente con GitHub Actions cuando se hace merge o push a `main`.
+
+El flujo general es:
+
+1. Se valida el proyecto en GitHub Actions.
+2. GitHub se conecta por SSH a la VM.
+3. La VM actualiza el repositorio.
+4. Docker Compose reconstruye y reinicia los servicios.
+5. Nginx publica el frontend y enruta las APIs bajo el dominio configurado.
+
+La documentacion especifica de despliegue esta en:
+
+```text
+docs/deployment.md
+```
+
+Los secretos, llaves SSH y variables reales de produccion no deben quedar versionados en el repositorio.

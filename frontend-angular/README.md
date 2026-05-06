@@ -1,59 +1,95 @@
-# FrontendAngular
+# Frontend Angular
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
+Frontend oficial de Emeltec Platform.
 
-## Development server
+Esta aplicacion entrega la interfaz web para monitoreo industrial, navegacion por empresas e instalaciones, dashboards operativos y modulos administrativos. El frontend se comunica con las APIs mediante rutas relativas (`/api/...`) para que el mismo codigo pueda funcionar en local y en produccion.
 
-To start a local development server, run:
+## Tecnologia
 
-```bash
-ng serve
-```
+- Angular 21.
+- TypeScript.
+- Tailwind CSS.
+- Chart.js.
+- Lucide Angular.
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Requisitos
 
-## Code scaffolding
+- Node.js compatible con Angular 21.
+- npm.
+- APIs locales levantadas si se quiere probar integracion completa.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Instalacion
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+Desde esta carpeta:
 
 ```bash
-ng build
+npm install
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Desarrollo local
 
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Levanta el servidor de desarrollo:
 
 ```bash
-ng test
+npm start
 ```
 
-## Running end-to-end tests
+Abre:
 
-For end-to-end (e2e) testing, run:
+```text
+http://localhost:4200
+```
+
+Durante desarrollo local, Angular usa `proxy.conf.json` para redirigir las llamadas `/api/...` hacia los servicios locales. Por eso, para probar login, empresas, usuarios o datos reales del sistema, las APIs locales deben estar ejecutandose.
+
+## Build
+
+Build de produccion:
 
 ```bash
-ng e2e
+npm run build -- --configuration=production
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+La salida se genera en:
 
-## Additional Resources
+```text
+dist/frontend-angular
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+En el despliegue real, este build se ejecuta dentro de Docker mediante el `Dockerfile` del frontend y luego se sirve con Nginx.
+
+## Estructura principal
+
+| Ruta | Proposito |
+|---|---|
+| `src/app/components/` | Componentes reutilizables de layout, UI y visualizacion. |
+| `src/app/pages/` | Paginas principales de la aplicacion. |
+| `src/app/services/` | Servicios Angular para comunicacion con APIs. |
+| `src/app/guards/` | Protecciones de rutas. |
+| `src/app/interceptors/` | Interceptores HTTP. |
+| `src/styles.css` | Estilos globales. |
+
+## Integracion con APIs
+
+El frontend no deberia tener URLs absolutas de produccion en el codigo. Las llamadas deben usar rutas relativas como:
+
+```text
+/api/auth/login
+/api/companies
+/api/users
+```
+
+Esto permite que:
+
+- En local, Angular use `proxy.conf.json`.
+- En produccion, Nginx y Docker resuelvan el trafico hacia los servicios correctos.
+
+## Validacion antes de subir cambios
+
+Antes de abrir un PR o hacer merge, ejecuta:
+
+```bash
+npm run build -- --configuration=production
+```
+
+Si el cambio toca integracion con APIs, valida tambien el flujo completo levantando el proyecto desde la raiz con Docker Compose.

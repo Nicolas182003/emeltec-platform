@@ -47,3 +47,6 @@ Thumbs.db
 
 # Local Claude/Codex settings
 .claude/
+
+# Local-only demos
+main-api/demo/

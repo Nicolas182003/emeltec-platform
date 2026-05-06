@@ -76,6 +76,9 @@ export interface VariableMapping {
   d2?: string | null;
   tipo_dato: string;
   unidad?: string | null;
+  rol_dashboard?: string | null;
+  transformacion?: string | null;
+  parametros?: VariableParameters | null;
   sitio_id: string;
   created_at?: string;
   updated_at?: string;
@@ -121,6 +124,9 @@ export interface CreateVariableMapPayload {
   d2?: string | null;
   tipo_dato: string;
   unidad?: string | null;
+  rol_dashboard?: string | null;
+  transformacion?: string | null;
+  parametros?: VariableParameters | null;
 }
 
 @Injectable({ providedIn: 'root' })

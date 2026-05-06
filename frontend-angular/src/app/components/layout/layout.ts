@@ -9,23 +9,17 @@ import { SidebarComponent } from './sidebar/sidebar';
   standalone: true,
   imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
   template: `
-    <div class="min-h-screen bg-slate-50 font-['Inter']">
-      <app-header></app-header>
-      
-      <div class="flex">
-        <app-sidebar></app-sidebar>
-        
-        <!-- Main Content Area -->
-        <!-- pt-16 para compensar la altura del header (h-16) -->
-        <!-- ml-[260px] para compensar el ancho del sidebar -->
-        <main class="flex-1 ml-[220px] pt-16 min-h-screen">
-          <div class="animate-in fade-in duration-500">
-            <router-outlet></router-outlet>
-          </div>
+    <div class="flex h-screen overflow-hidden bg-[#f0f2f5]" style="font-family: 'DM Sans', 'Josefin Sans', sans-serif;">
+      <app-sidebar></app-sidebar>
+
+      <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <app-header></app-header>
+        <main class="min-w-0 flex-1 overflow-y-auto bg-[#f0f2f5]">
+          <router-outlet></router-outlet>
         </main>
       </div>
     </div>
-  `
+  `,
 })
 export class LayoutComponent implements OnInit {
   private router = inject(Router);

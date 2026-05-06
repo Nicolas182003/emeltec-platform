@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -8,105 +9,99 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-6">
-      <div class="flex items-center gap-8">
-        <button
-          type="button"
-          class="flex h-12 w-[190px] items-center justify-start rounded-lg"
-          (click)="router.navigate(['/dashboard'])"
-        >
-          <img
-            src="/images/emeltec-logo.webp"
-            alt="Emeltec"
-            class="h-10 w-auto object-contain"
-          />
-        </button>
-        
-        <div class="relative w-96 hidden md:block">
-          <span class="absolute inset-y-0 left-3 flex items-center">
-            <span class="material-symbols-outlined text-slate-400 text-lg">search</span>
-          </span>
-          <input 
-            class="w-full bg-slate-50 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary-container/10 transition-all outline-none" 
-            placeholder="Buscador global..." 
-            type="text"
-          />
-        </div>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <!-- Acceso a Gestión de Usuarios: solo SuperAdmin y Admin -->
-        @if (auth.canManageUsers()) {
-          <button (click)="goToUsers()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 hover:text-primary-container transition-all" title="Gestión de Usuarios">
-            <span class="material-symbols-outlined">group</span>
+    <header class="h-[44px] shrink-0 border-b border-[#dfe7f1] bg-white">
+      <div class="flex h-full items-stretch px-5">
+        <nav class="flex items-stretch">
+          <button
+            type="button"
+            (click)="router.navigate(['/dashboard'])"
+            [style.color]="isDashboard() ? '#0899A5' : '#94A3B8'"
+            [style.border-bottom]="isDashboard() ? '2px solid #0DAFBD' : '2px solid transparent'"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-[14px] font-medium transition-colors"
+          >
+            <span class="material-symbols-outlined text-[16px]">grid_view</span>
+            <span>Dashboard</span>
           </button>
-        }
 
-        <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors">
-          <span class="material-symbols-outlined">notifications</span>
-        </button>
-
-        <!-- Configuración: solo SuperAdmin y Admin -->
-        @if (auth.isSuperAdmin()) {
-          <button (click)="goToAdministration()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors" title="Administracion">
-            <span class="material-symbols-outlined">settings</span>
+          <button
+            type="button"
+            (click)="router.navigate(['/companies'])"
+            [style.color]="isMonitoreo() ? '#0899A5' : '#94A3B8'"
+            [style.border-bottom]="isMonitoreo() ? '2px solid #0DAFBD' : '2px solid transparent'"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-[14px] font-medium transition-colors"
+          >
+            <span class="material-symbols-outlined text-[16px]">monitoring</span>
+            <span>Dynamic</span>
           </button>
-        }
-        
-        <div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
-        
-        <div class="flex items-center gap-3 pl-2">
-          <div class="text-right hidden sm:block">
-            <p class="text-xs font-bold text-slate-800 leading-none">{{ auth.user()?.nombre || 'Usuario' }}</p>
-            <p class="text-[10px] text-slate-400 font-medium mt-1">{{ auth.user()?.tipo || 'Rol' }}</p>
+        </nav>
+
+        <div class="flex-1"></div>
+
+        <div class="flex items-center gap-1.5">
+          <div class="flex items-center gap-0.5 rounded-full border border-[#dfe7f1] bg-[#f8fafc] p-[2px]">
+            <button class="flex h-[25px] w-[25px] items-center justify-center rounded-full bg-white text-[#0899A5] shadow-sm" title="Tema claro">
+              <span class="material-symbols-outlined text-[13px]">light_mode</span>
+            </button>
+            <button class="flex h-[25px] w-[25px] items-center justify-center rounded-full text-[#94A3B8]" title="Tema oscuro">
+              <span class="material-symbols-outlined text-[13px]">dark_mode</span>
+            </button>
           </div>
 
-          <!-- Badge de rol con color -->
-          <div [class]="'w-9 h-9 rounded-full flex items-center justify-center border ' + getRoleBadgeClasses()">
-            <span [class]="'material-symbols-outlined text-lg ' + getRoleIconColor()">
-              {{ getRoleIcon() }}
-            </span>
+          <div class="flex items-center gap-1 rounded-md border border-[#fde68a] bg-[#fffbeb] px-2.5 py-1 text-[12px] font-semibold text-[#d97706]">
+            <span class="material-symbols-outlined text-[12px]">build</span>
+            <span>WIP</span>
           </div>
-          
-          <!-- Botón de Cerrar Sesión -->
-          <button (click)="auth.logout()" class="ml-2 w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all" title="Cerrar Sesión">
-            <span class="material-symbols-outlined">logout</span>
+
+          <button class="hidden items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-[#64748b] transition-colors hover:bg-[#f1f5f9] md:flex">
+            <span class="material-symbols-outlined text-[13px]">headset_mic</span>
+            <span>Contactanos</span>
+          </button>
+
+          @if (auth.isSuperAdmin()) {
+            <button (click)="router.navigate(['/administration'])" class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:text-[#475569]" title="Administracion">
+              <span class="material-symbols-outlined text-[16px]">settings</span>
+            </button>
+          }
+
+          <button
+            type="button"
+            (click)="auth.logout()"
+            class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[11px] font-bold text-white"
+            title="{{ auth.user()?.nombre }}"
+          >
+            {{ getUserInitials() }}
           </button>
         </div>
       </div>
     </header>
-  `
+  `,
 })
-export class HeaderComponent {
-  auth = inject(AuthService);
-  router = inject(Router);
+export class HeaderComponent implements OnInit {
+  readonly auth = inject(AuthService);
+  readonly router = inject(Router);
 
-  goToUsers() {
-    this.router.navigate(['/companies']);
+  private currentUrl = signal(this.router.url);
+
+  ngOnInit(): void {
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      this.currentUrl.set(e.urlAfterRedirects || e.url);
+    });
   }
 
-  goToAdministration() {
-    this.router.navigate(['/administration']);
+  isDashboard(): boolean {
+    return this.currentUrl().startsWith('/dashboard');
   }
 
-  getRoleIcon(): string {
-    if (this.auth.isSuperAdmin()) return 'admin_panel_settings';
-    if (this.auth.isAdmin()) return 'manage_accounts';
-    if (this.auth.isGerente()) return 'shield_person';
-    return 'person';
+  isMonitoreo(): boolean {
+    const url = this.currentUrl();
+    return url === '/companies' || url.startsWith('/companies/');
   }
 
-  getRoleBadgeClasses(): string {
-    if (this.auth.isSuperAdmin()) return 'bg-purple-50 border-purple-200';
-    if (this.auth.isAdmin()) return 'bg-blue-50 border-blue-200';
-    if (this.auth.isGerente()) return 'bg-emerald-50 border-emerald-200';
-    return 'bg-slate-50 border-slate-200';
-  }
-
-  getRoleIconColor(): string {
-    if (this.auth.isSuperAdmin()) return 'text-purple-500';
-    if (this.auth.isAdmin()) return 'text-blue-500';
-    if (this.auth.isGerente()) return 'text-emerald-500';
-    return 'text-slate-500';
+  getUserInitials(): string {
+    const user = this.auth.user();
+    if (!user) return 'U';
+    const first = user.nombre?.charAt(0) ?? '';
+    const last = user.apellido?.charAt(0) ?? '';
+    return `${first}${last}`.trim().toUpperCase() || user.nombre.substring(0, 2).toUpperCase();
   }
 }

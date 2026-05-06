@@ -10,6 +10,7 @@ interface InstallationCard {
   subCompanyName: string;
   type: string;
   location: string;
+  depth: string | null;
   status: 'pending' | 'online' | 'offline';
 }
 
@@ -46,29 +47,27 @@ export class DashboardComponent implements OnInit {
   }
 
   openInstallation(installation: InstallationCard): void {
-    if (!installation.id) {
-      return;
-    }
-
+    if (!installation.id) return;
     this.router.navigate(['/companies', installation.id, 'water']);
   }
 
   getStatusLabel(status: InstallationCard['status']): string {
-    if (status === 'online') return 'En linea';
-    if (status === 'offline') return 'Sin senal';
-    return 'Pendiente';
+    if (status === 'online') return 'En vivo';
+    if (status === 'offline') return 'Sin datos';
+    return 'Sin datos';
   }
 
-  getStatusClass(status: InstallationCard['status']): string {
-    if (status === 'online') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
-    if (status === 'offline') return 'bg-rose-50 text-rose-700 ring-rose-200';
-    return 'bg-slate-100 text-slate-500 ring-slate-200';
+  getStatusColor(status: InstallationCard['status']): string {
+    if (status === 'online') return '#22c55e';
+    return '#94a3b8';
   }
 
   getTypeIcon(type: string): string {
     const normalized = (type || '').toLowerCase();
     if (normalized.includes('agua')) return 'water_drop';
     if (normalized.includes('elect')) return 'bolt';
+    if (normalized.includes('ril')) return 'waves';
+    if (normalized.includes('proceso')) return 'memory';
     return 'sensors';
   }
 
@@ -79,9 +78,10 @@ export class DashboardComponent implements OnInit {
           id: site.id,
           name: this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalacion',
           companyName: company.nombre || 'Empresa sin nombre',
-          subCompanyName: subCompany.nombre || 'División sin nombre',
+          subCompanyName: subCompany.nombre || 'Division sin nombre',
           type: company.tipo_empresa || 'Instalacion',
-          location: this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) || 'Sin referencia',
+          location: this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) || subCompany.nombre || 'Sin referencia',
+          depth: this.pickFirst(site, ['profundidad', 'profundidad_m', 'prof_total', 'depth', 'profundidad_pozo']),
           status: 'pending' as const,
         }))
       )

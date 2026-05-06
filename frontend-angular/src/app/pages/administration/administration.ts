@@ -63,12 +63,30 @@ interface SiteForm {
 }
 
 interface VariableForm {
+  mapId: string;
   alias: string;
   d1: string;
   d2: string;
   tipo_dato: string;
   unidad: string;
+  transformacion: string;
+  factor: string;
+  offset: string;
+  sandboxRaw: string;
 }
+
+const DEFAULT_VARIABLE_FORM: VariableForm = {
+  mapId: '',
+  alias: '',
+  d1: '',
+  d2: '',
+  tipo_dato: 'FLOAT',
+  unidad: '',
+  transformacion: 'directo',
+  factor: '1',
+  offset: '0',
+  sandboxRaw: '',
+};
 
 @Component({
   selector: 'app-administration',
@@ -334,33 +352,70 @@ interface VariableForm {
                           }
                         </select>
                       </div>
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Tipo de sitio</label>
-                          <select
-                            name="site-type"
-                            [ngModel]="siteForm().tipo_sitio"
-                            (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
-                            class="field-control"
-                          >
-                            <option value="pozo">Pozo</option>
-                            <option value="electrico">Electrico</option>
-                            <option value="generico">Generico</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
-                          <select
-                            name="site-active"
-                            [ngModel]="siteForm().activo ? 'true' : 'false'"
-                            (ngModelChange)="updateSiteActive($event)"
-                            class="field-control"
-                          >
-                            <option value="true">Activo</option>
-                            <option value="false">Inactivo</option>
-                          </select>
-                        </div>
+                      <div>
+                        <label class="mb-1 block text-xs font-bold text-slate-500">Tipo de instalacion</label>
+                        <select
+                          name="site-type"
+                          [ngModel]="siteForm().tipo_sitio"
+                          (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
+                          class="field-control"
+                        >
+                          <option value="pozo">Pozo</option>
+                          <option value="electrico">Electrico</option>
+                          <option value="riles">Riles</option>
+                          <option value="proceso">Proceso</option>
+                          <option value="generico">Generico</option>
+                        </select>
                       </div>
+                      <div>
+                        <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
+                        <select
+                          name="site-active"
+                          [ngModel]="siteForm().activo ? 'true' : 'false'"
+                          (ngModelChange)="updateSiteActive($event)"
+                          class="field-control"
+                        >
+                          <option value="true">Activo</option>
+                          <option value="false">Inactivo</option>
+                        </select>
+                      </div>
+                      @if (siteForm().tipo_sitio === 'pozo') {
+                        <div class="rounded-lg border border-cyan-100 bg-cyan-50/50 p-4">
+                          <div class="mb-3 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] text-cyan-700">water_drop</span>
+                            <div>
+                              <h3 class="text-sm font-black text-slate-800">Configuracion manual del pozo</h3>
+                              <p class="text-xs font-semibold text-cyan-700/70">Campos opcionales para proyectar el nivel freatico en la vista del pozo.</p>
+                            </div>
+                          </div>
+                          <div class="grid gap-3 md:grid-cols-2">
+                            <div>
+                              <label class="mb-1 block text-xs font-bold text-slate-500">Profundidad total del pozo (m)</label>
+                              <input
+                                name="well-depth"
+                                type="number"
+                                step="0.01"
+                                [ngModel]="siteForm().profundidad_pozo_m"
+                                (ngModelChange)="updateSiteForm('profundidad_pozo_m', $event)"
+                                class="field-control"
+                                placeholder="18"
+                              />
+                            </div>
+                            <div>
+                              <label class="mb-1 block text-xs font-bold text-slate-500">Distancia del sensor desde superficie (m)</label>
+                              <input
+                                name="sensor-depth"
+                                type="number"
+                                step="0.01"
+                                [ngModel]="siteForm().profundidad_sensor_m"
+                                (ngModelChange)="updateSiteForm('profundidad_sensor_m', $event)"
+                                class="field-control"
+                                placeholder="16.5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      }
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Nombre del sitio</label>
                         <input
@@ -393,72 +448,6 @@ interface VariableForm {
                           placeholder="Ciudad, faena o coordenadas"
                         />
                       </div>
-                      @if (siteForm().tipo_sitio === 'pozo') {
-                        <div class="rounded-lg border border-cyan-100 bg-cyan-50/50 p-4">
-                          <div class="mb-3 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px] text-cyan-700">water_drop</span>
-                            <h3 class="text-sm font-black text-slate-800">Configuracion de pozo</h3>
-                          </div>
-                          <div class="grid gap-3 md:grid-cols-2">
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Profundidad del pozo (m)</label>
-                              <input
-                                name="well-depth"
-                                type="number"
-                                step="0.01"
-                                [ngModel]="siteForm().profundidad_pozo_m"
-                                (ngModelChange)="updateSiteForm('profundidad_pozo_m', $event)"
-                                class="field-control"
-                                placeholder="18"
-                              />
-                            </div>
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Profundidad del sensor (m)</label>
-                              <input
-                                name="sensor-depth"
-                                type="number"
-                                step="0.01"
-                                [ngModel]="siteForm().profundidad_sensor_m"
-                                (ngModelChange)="updateSiteForm('profundidad_sensor_m', $event)"
-                                class="field-control"
-                                placeholder="16.5"
-                              />
-                            </div>
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Nivel estatico manual (m)</label>
-                              <input
-                                name="static-level"
-                                type="number"
-                                step="0.01"
-                                [ngModel]="siteForm().nivel_estatico_manual_m"
-                                (ngModelChange)="updateSiteForm('nivel_estatico_manual_m', $event)"
-                                class="field-control"
-                                placeholder="14.7"
-                              />
-                            </div>
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Obra DGA</label>
-                              <input
-                                name="dga-work"
-                                [ngModel]="siteForm().obra_dga"
-                                (ngModelChange)="updateSiteForm('obra_dga', $event)"
-                                class="field-control"
-                                placeholder="OB-0601-292"
-                              />
-                            </div>
-                            <div class="md:col-span-2">
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Slug</label>
-                              <input
-                                name="well-slug"
-                                [ngModel]="siteForm().slug"
-                                (ngModelChange)="updateSiteForm('slug', $event)"
-                                class="field-control"
-                                placeholder="pozo-vertiente-01"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      }
                       <button type="submit" [disabled]="busyAction() === 'site'" class="primary-button">
                         <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
                         {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
@@ -608,7 +597,7 @@ interface VariableForm {
                           required
                           name="variable-key"
                           [ngModel]="variableForm().d1"
-                          (ngModelChange)="updateVariableForm('d1', $event)"
+                          (ngModelChange)="selectVariableKey($event)"
                           class="field-control"
                         >
                           <option value="" disabled>Selecciona variable</option>
@@ -657,9 +646,76 @@ interface VariableForm {
                         </div>
                       </div>
 
+                      <div>
+                        <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
+                        <select
+                          name="variable-transform"
+                          [ngModel]="variableForm().transformacion"
+                          (ngModelChange)="updateVariableTransform($event)"
+                          class="field-control"
+                        >
+                          <option value="directo">Directo</option>
+                          <option value="lineal">Lineal</option>
+                        </select>
+                      </div>
+
+                      @if (isLinearTransform()) {
+                        <div class="grid grid-cols-2 gap-3">
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Factor Multiplicador</label>
+                            <input
+                              type="number"
+                              step="any"
+                              name="variable-factor"
+                              [ngModel]="variableForm().factor"
+                              (ngModelChange)="updateVariableForm('factor', $event)"
+                              class="field-control"
+                              placeholder="1"
+                            />
+                          </div>
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Offset</label>
+                            <input
+                              type="number"
+                              step="any"
+                              name="variable-offset"
+                              [ngModel]="variableForm().offset"
+                              (ngModelChange)="updateVariableForm('offset', $event)"
+                              class="field-control"
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      }
+
+                      <div class="rounded-lg border border-cyan-100 bg-cyan-50/60 p-3">
+                        <div class="mb-3 flex items-center gap-2">
+                          <span class="material-symbols-outlined text-[18px] text-cyan-700">calculate</span>
+                          <h3 class="text-xs font-black uppercase tracking-[0.16em] text-cyan-800">Calculadora de Prueba (Vista Previa)</h3>
+                        </div>
+
+                        <div class="grid gap-3">
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Valor Crudo entrante (Simulacion CSV)</label>
+                            <input
+                              name="variable-sandbox-raw"
+                              [ngModel]="variableForm().sandboxRaw"
+                              (ngModelChange)="updateVariableForm('sandboxRaw', $event)"
+                              class="field-control bg-white"
+                              placeholder="Ej: 14.7"
+                            />
+                          </div>
+                        </div>
+
+                        <div class="mt-3 rounded-lg border border-cyan-100 bg-white px-3 py-2 shadow-sm">
+                          <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Resultado proyectado en Grafico</p>
+                          <p class="mt-1 text-xl font-black text-cyan-800">{{ previewResultText() }}</p>
+                        </div>
+                      </div>
+
                       <button type="submit" [disabled]="!selectedSiteId() || busyAction() === 'variable'" class="primary-button">
                         <span class="material-symbols-outlined text-[18px]">label</span>
-                        {{ busyAction() === 'variable' ? 'Guardando' : 'Guardar variable' }}
+                        {{ busyAction() === 'variable' ? 'Guardando' : (variableForm().mapId ? 'Actualizar variable' : 'Guardar variable') }}
                       </button>
                     </form>
 
@@ -682,7 +738,9 @@ interface VariableForm {
                                 @if (variable.mapping) {
                                   <div>
                                     <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                                    <p class="text-xs text-slate-400">{{ variable.mapping.tipo_dato }} {{ variable.mapping.unidad || '' }}</p>
+                                    <p class="text-xs text-slate-400">
+                                      {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
+                                    </p>
                                   </div>
                                 } @else {
                                   <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
@@ -835,7 +893,7 @@ export class AdministrationComponent implements OnInit {
     obra_dga: '',
     slug: '',
   });
-  variableForm = signal<VariableForm>({ alias: '', d1: '', d2: '', tipo_dato: 'FLOAT', unidad: '' });
+  variableForm = signal<VariableForm>({ ...DEFAULT_VARIABLE_FORM });
 
   allSubCompanies = computed<SubCompanyOption[]>(() =>
     this.hierarchy().flatMap((company) =>
@@ -910,6 +968,58 @@ export class AdministrationComponent implements OnInit {
 
   updateVariableForm(field: keyof VariableForm, value: string): void {
     this.variableForm.update((form) => ({ ...form, [field]: value }));
+  }
+
+  selectVariableKey(d1: string): void {
+    const selected = this.siteVariables().variables.find((variable) => variable.nombre_dato === d1);
+
+    this.variableForm.update((form) => ({
+      ...form,
+      d1,
+      alias: form.alias || selected?.nombre_dato || '',
+      tipo_dato: form.tipo_dato || this.guessDataType(selected?.valor_dato ?? null),
+      sandboxRaw: selected?.valor_dato === null || selected?.valor_dato === undefined
+        ? form.sandboxRaw
+        : String(selected.valor_dato),
+    }));
+  }
+
+  updateVariableTransform(transformacion: string): void {
+    const normalizedTransform = this.normalizeVariableTransformForForm(transformacion);
+
+    this.variableForm.update((form) => ({
+      ...form,
+      transformacion: normalizedTransform,
+      factor: this.isLinearTransformValue(normalizedTransform) ? (form.factor || '1') : '1',
+      offset: this.isLinearTransformValue(normalizedTransform) ? (form.offset || '0') : '0',
+    }));
+  }
+
+  isLinearTransform(): boolean {
+    return this.isLinearTransformValue(this.variableForm().transformacion);
+  }
+
+  previewResultText(): string {
+    const form = this.variableForm();
+    const rawText = String(form.sandboxRaw ?? '').trim();
+    const unit = form.unidad ? ` ${form.unidad}` : '';
+
+    if (!rawText) return 'Ingresa un valor crudo';
+
+    if (this.isLinearTransformValue(form.transformacion)) {
+      const raw = this.parsePreviewNumber(rawText);
+      const factor = this.parsePreviewNumber(form.factor) ?? 1;
+      const offset = this.parsePreviewNumber(form.offset) ?? 0;
+      if (raw === null) return 'Valor crudo no numerico';
+      return `${this.formatPreviewNumber((raw * factor) + offset)}${unit}`;
+    }
+
+    return `${rawText}${unit}`;
+  }
+
+  displayVariableTransform(transformacion: string | null | undefined): string {
+    if (transformacion === 'nivel_freatico') return 'derivado por sitio';
+    return this.normalizeVariableTransformForForm(transformacion);
   }
 
   createCompany(event: Event): void {
@@ -1098,12 +1208,19 @@ export class AdministrationComponent implements OnInit {
   }
 
   prepareVariableMap(variable: SiteVariable): void {
+    const params = variable.mapping?.parametros || null;
+
     this.variableForm.set({
+      mapId: variable.mapping?.id || '',
       alias: variable.mapping?.alias || variable.nombre_dato,
       d1: variable.nombre_dato,
       d2: variable.mapping?.d2 || '',
       tipo_dato: variable.mapping?.tipo_dato || this.guessDataType(variable.valor_dato),
       unidad: variable.mapping?.unidad || '',
+      transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
+      factor: this.configNumberToString(params?.factor) || '1',
+      offset: this.configNumberToString(params?.offset) || '0',
+      sandboxRaw: variable.valor_dato === null || variable.valor_dato === undefined ? '' : String(variable.valor_dato),
     });
   }
 
@@ -1121,14 +1238,21 @@ export class AdministrationComponent implements OnInit {
       d2: this.variableForm().d2 || null,
       tipo_dato: this.variableForm().tipo_dato,
       unidad: this.variableForm().unidad || null,
+      rol_dashboard: this.inferVariableRole(),
+      transformacion: this.normalizeVariableTransformForForm(this.variableForm().transformacion),
+      parametros: this.buildVariableParameters(),
     };
 
     this.busyAction.set('variable');
-    this.api.createSiteVariableMap(siteId, payload).subscribe({
+    const request$ = this.variableForm().mapId
+      ? this.api.updateSiteVariableMap(siteId, this.variableForm().mapId, payload)
+      : this.api.createSiteVariableMap(siteId, payload);
+
+    request$.subscribe({
       next: (res) => {
         this.busyAction.set('');
         this.setSuccess(res.message || 'Variable guardada.');
-        this.variableForm.set({ alias: '', d1: '', d2: '', tipo_dato: 'FLOAT', unidad: '' });
+        this.variableForm.set({ ...DEFAULT_VARIABLE_FORM });
         this.loadSiteVariables(siteId);
       },
       error: (err: unknown) => {
@@ -1171,6 +1295,8 @@ export class AdministrationComponent implements OnInit {
 
   siteTypeLabel(type: string): string {
     if (type === 'electrico') return 'Electrico';
+    if (type === 'riles') return 'Riles';
+    if (type === 'proceso') return 'Proceso';
     if (type === 'generico') return 'Generico';
     return 'Pozo';
   }
@@ -1178,6 +1304,8 @@ export class AdministrationComponent implements OnInit {
   siteTypeBadgeClass(type: string): string {
     const base = 'rounded-md px-2 py-1 text-xs font-bold';
     if (type === 'electrico') return `${base} bg-amber-50 text-amber-700`;
+    if (type === 'riles') return `${base} bg-emerald-50 text-emerald-700`;
+    if (type === 'proceso') return `${base} bg-indigo-50 text-indigo-700`;
     if (type === 'generico') return `${base} bg-slate-100 text-slate-600`;
     return `${base} bg-cyan-50 text-cyan-700`;
   }
@@ -1264,10 +1392,31 @@ export class AdministrationComponent implements OnInit {
     return {
       profundidad_pozo_m: this.numberOrNull(this.siteForm().profundidad_pozo_m),
       profundidad_sensor_m: this.numberOrNull(this.siteForm().profundidad_sensor_m),
-      nivel_estatico_manual_m: this.numberOrNull(this.siteForm().nivel_estatico_manual_m),
-      obra_dga: this.siteForm().obra_dga || null,
-      slug: this.siteForm().slug || null,
     };
+  }
+
+  private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
+    const form = this.variableForm();
+
+    if (this.isLinearTransformValue(form.transformacion)) {
+      return {
+        factor: this.numberOrNull(form.factor) ?? 1,
+        offset: this.numberOrNull(form.offset) ?? 0,
+      };
+    }
+
+    return {};
+  }
+
+  private inferVariableRole(): string {
+    const form = this.variableForm();
+    const text = this.normalizeSearchText(form.alias, form.d1, form.unidad);
+
+    if (text.includes('nivel') || text.includes('level') || text.includes('sonda')) return 'nivel';
+    if (text.includes('caudal') || text.includes('l s') || text.includes('lps')) return 'caudal';
+    if (text.includes('totalizador') || text.includes('totalizado')) return 'totalizador';
+
+    return 'generico';
   }
 
   private patchPozoConfigForm(config: PozoConfig | null): void {
@@ -1281,9 +1430,42 @@ export class AdministrationComponent implements OnInit {
     }));
   }
 
+  private isLinearTransformValue(transformacion: string): boolean {
+    return transformacion === 'lineal';
+  }
+
+  private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
+    if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
+    return 'directo';
+  }
+
+  private normalizeSearchText(...values: Array<string | null | undefined>): string {
+    return values
+      .map((value) => String(value ?? '').trim())
+      .join(' ')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  private parsePreviewNumber(value: string): number | null {
+    const normalized = String(value ?? '').trim().replace(',', '.');
+    if (!normalized) return null;
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private formatPreviewNumber(value: number): string {
+    if (!Number.isFinite(value)) return 'No calculable';
+    const rounded = Math.round(value * 1000) / 1000;
+    return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  }
+
   private numberOrNull(value: string): number | null {
     if (value === undefined || value === null || String(value).trim() === '') return null;
-    const parsed = Number(value);
+    const parsed = Number(String(value).trim().replace(',', '.'));
     return Number.isFinite(parsed) ? parsed : null;
   }
 

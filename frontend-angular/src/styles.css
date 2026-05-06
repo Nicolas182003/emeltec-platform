@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Josefin Sans";
+  src: url("/fonts/JosefinSans-VariableFont_wght.ttf") format("truetype");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   /* Paleta de Colores Industrial Control Center */
   --color-primary: #001e40;
@@ -16,11 +24,12 @@
 
   /* Fuentes */
   --font-inter: "Inter", sans-serif;
+  --font-josefin: "Josefin Sans", sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-background font-inter text-on-surface antialiased;
+    @apply bg-background font-josefin text-on-surface antialiased;
   }
 }
 

@@ -38,4 +38,8 @@ export class CompanyService {
   getSites(id: string): Observable<any> {
      return this.http.get<any>(`/api/companies/${id}/sites`); 
   }
+
+  getSiteDashboardData(siteId: string): Observable<any> {
+    return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`);
+  }
 }

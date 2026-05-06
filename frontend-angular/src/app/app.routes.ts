@@ -31,11 +31,6 @@ export const routes: Routes = [
         canActivate: [roleGuard('SuperAdmin')],
         loadComponent: () => import('./pages/administration/administration').then(m => m.AdministrationComponent)
       },
-      {
-        path: 'users',
-        canActivate: [roleGuard('SuperAdmin', 'Admin')],
-        loadComponent: () => import('./pages/user-management/user-management').then(m => m.UserManagementComponent)
-      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },

@@ -1,12 +1,25 @@
 const crypto = require('crypto');
 const db = require('../config/db');
+const { m3hALs } = require('../utils/caudal');
+const { parseIEEE754, registrosModbusAFloat32 } = require('../utils/ieee754');
+const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 
 const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
 const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS = 'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
-const SITE_TYPES = new Set(['pozo', 'electrico', 'generico']);
+const SITE_TYPES = new Set(['pozo', 'electrico', 'riles', 'proceso', 'generico']);
 const VARIABLE_ROLES = new Set(['generico', 'nivel', 'caudal', 'totalizador', 'estado', 'energia', 'temperatura', 'presion']);
-const VARIABLE_TRANSFORMS = new Set(['directo', 'ieee754_32', 'escala_lineal', 'formula']);
+const VARIABLE_TRANSFORMS = new Set([
+  'directo',
+  'ieee754',
+  'ieee754_32',
+  'lineal',
+  'escala_lineal',
+  'formula',
+  'nivel_freatico',
+  'caudal',
+  'caudal_m3h_lps',
+]);
 
 function badRequest(res, message) {
   return res.status(400).json({ ok: false, error: message, message });
@@ -61,7 +74,12 @@ function normalizeVariableRole(value) {
 }
 
 function normalizeVariableTransform(value) {
-  return normalizeOption(value, VARIABLE_TRANSFORMS, 'directo');
+  const normalized = normalizeOption(value, VARIABLE_TRANSFORMS, 'directo');
+  if (!normalized) return null;
+  if (normalized === 'escala_lineal') return 'lineal';
+  if (normalized === 'ieee754') return 'ieee754_32';
+  if (normalized === 'caudal') return 'caudal_m3h_lps';
+  return normalized;
 }
 
 function parseJsonObject(value) {
@@ -95,6 +113,16 @@ function isSuperAdmin(user) {
 function requireSuperAdmin(req, res) {
   if (isSuperAdmin(req.user)) return false;
   return forbidden(res, 'Solo un SuperAdmin puede administrar empresas, sitios y variables.');
+}
+
+function canReadSite(user, site) {
+  if (!user || !site) return false;
+  if (user.tipo === 'SuperAdmin') return true;
+  if (user.tipo === 'Admin') return user.empresa_id === site.empresa_id;
+  if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
+    return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
+  }
+  return false;
 }
 
 function formatTimestampMinus3(column) {
@@ -158,6 +186,22 @@ async function getPozoConfigBySiteId(siteId) {
   return rows[0] || null;
 }
 
+async function attachPozoConfigsToSites(sites) {
+  if (!sites.length) return sites;
+
+  const siteIds = sites.map((site) => site.id);
+  const { rows } = await db.query(
+    `SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = ANY($1::text[])`,
+    [siteIds]
+  );
+  const configsBySiteId = new Map(rows.map((row) => [row.sitio_id, row]));
+
+  return sites.map((site) => ({
+    ...site,
+    pozo_config: configsBySiteId.get(site.id) || null,
+  }));
+}
+
 function parsePozoConfig(rawConfig = {}) {
   const source = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
 
@@ -213,6 +257,224 @@ async function ensureSerialAvailable(serialId, currentSiteId = null) {
 
   const { rows } = await db.query(query, params);
   return rows[0] || null;
+}
+
+function isPlainObject(value) {
+  return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseMappingParams(value) {
+  if (isPlainObject(value)) return value;
+  if (typeof value !== 'string' || !value.trim()) return {};
+
+  try {
+    const parsed = JSON.parse(value);
+    return isPlainObject(parsed) ? parsed : {};
+  } catch (_err) {
+    return {};
+  }
+}
+
+function numberOrNull(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function requireFiniteNumber(value, label) {
+  const parsed = numberOrNull(value);
+  if (parsed === null) {
+    throw new Error(`${label} debe ser numerico`);
+  }
+  return parsed;
+}
+
+function readRawValue(rawData, key) {
+  if (!key || !isPlainObject(rawData)) return undefined;
+  return rawData[key];
+}
+
+function parseBooleanParam(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  return ['true', '1', 'si', 'yes'].includes(String(value).trim().toLowerCase());
+}
+
+function applyLinearTransform(value, params = {}) {
+  const base = requireFiniteNumber(value, 'valor');
+  const factor = numberOrNull(params.factor) ?? 1;
+  const offset = numberOrNull(params.offset) ?? 0;
+  return (base * factor) + offset;
+}
+
+function applyIeeeTransform({ rawData, mapping, params }) {
+  const rawD1 = readRawValue(rawData, mapping.d1);
+  const rawD2 = readRawValue(rawData, mapping.d2);
+
+  if (mapping.d2) {
+    const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
+    const wordBaja = requireFiniteNumber(rawD2, mapping.d2);
+    const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
+    return registrosModbusAFloat32(wordAlta, wordBaja, wordSwap).valor;
+  }
+
+  if (rawD1 === undefined || rawD1 === null) {
+    throw new Error(`No existe dato crudo ${mapping.d1}`);
+  }
+
+  return parseIEEE754(rawD1, {
+    formato: params.formato || 'float32',
+    byteOrder: params.byteOrder || params.word_order || 'BE',
+  });
+}
+
+function normalizeTransform(value) {
+  const normalized = normalizeVariableTransform(value);
+  return normalized || cleanString(value).toLowerCase();
+}
+
+function applyMappingTransform({ rawData, mapping, pozoConfig }) {
+  const params = parseMappingParams(mapping.parametros);
+  const transformacion = normalizeTransform(mapping.transformacion);
+  const rawD1 = readRawValue(rawData, mapping.d1);
+
+  switch (transformacion) {
+    case 'directo':
+      return rawD1;
+
+    case 'lineal':
+      return applyLinearTransform(rawD1, params);
+
+    case 'ieee754_32':
+      return applyIeeeTransform({ rawData, mapping, params });
+
+    case 'nivel_freatico': {
+      const lecturaPozo = applyLinearTransform(rawD1, params);
+      return calcularNivelFreatico({
+        lecturaPozo,
+        profundidadSensor: requireFiniteNumber(pozoConfig?.profundidad_sensor_m, 'profundidad_sensor_m'),
+        profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
+      });
+    }
+
+    case 'caudal_m3h_lps': {
+      const caudalM3h = applyLinearTransform(rawD1, params);
+      return m3hALs(caudalM3h);
+    }
+
+    case 'formula':
+      throw new Error('transformacion formula aun no esta habilitada en dashboard-data');
+
+    default:
+      throw new Error(`transformacion no soportada: ${mapping.transformacion}`);
+  }
+}
+
+function responseKeyForMapping(mapping) {
+  if (mapping.rol_dashboard && mapping.rol_dashboard !== 'generico') return mapping.rol_dashboard;
+  return cleanString(mapping.alias)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || mapping.d1;
+}
+
+function normalizeSearchText(...values) {
+  return values
+    .map((value) => cleanString(value))
+    .join(' ')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function isLevelSensorVariable(variable) {
+  if (variable.rol_dashboard === 'nivel') return true;
+
+  const text = normalizeSearchText(variable.alias, variable.key, variable.fuente?.d1);
+  if (text.includes('freatico')) return false;
+
+  return [
+    'nivel agua',
+    'nivel',
+    'level',
+    'sonda',
+    'lectura pozo',
+    'columna agua',
+    'altura agua',
+  ].some((token) => text.includes(token));
+}
+
+function findRawLevelSensor(rawData) {
+  if (!isPlainObject(rawData)) return null;
+
+  for (const [key, value] of Object.entries(rawData)) {
+    const text = normalizeSearchText(key);
+    const numericValue = numberOrNull(value);
+
+    if (
+      numericValue !== null &&
+      !text.includes('freatico') &&
+      (text.includes('nivel') || text.includes('level') || text.includes('sonda') || text.includes('altura agua'))
+    ) {
+      return {
+        key,
+        alias: key,
+        rol_dashboard: 'nivel',
+        valor: numericValue,
+      };
+    }
+  }
+
+  return null;
+}
+
+function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
+  const source = variables.find((variable) =>
+    variable.ok &&
+    variable.transformacion !== 'nivel_freatico' &&
+    Number.isFinite(Number(variable.valor)) &&
+    isLevelSensorVariable(variable)
+  ) || findRawLevelSensor(rawData);
+
+  if (!source) return null;
+
+  const derived = {
+    id: 'derived:nivel_freatico',
+    key: 'nivel_freatico',
+    alias: 'Nivel freatico',
+    rol_dashboard: 'nivel_freatico',
+    transformacion: 'derivado_pozo',
+    unidad: 'm',
+    fuente: {
+      variable: source.key,
+      alias: source.alias,
+      profundidad_sensor_m: pozoConfig?.profundidad_sensor_m ?? null,
+      profundidad_pozo_m: pozoConfig?.profundidad_pozo_m ?? null,
+    },
+    crudo: {
+      lectura_sensor_m: Number(source.valor),
+    },
+    derivado: true,
+    ok: true,
+    valor: null,
+  };
+
+  try {
+    derived.valor = calcularNivelFreatico({
+      lecturaPozo: requireFiniteNumber(Number(source.valor), source.alias || source.key),
+      profundidadSensor: requireFiniteNumber(pozoConfig?.profundidad_sensor_m, 'profundidad_sensor_m'),
+      profundidadTotal: numberOrNull(pozoConfig?.profundidad_pozo_m),
+    });
+  } catch (err) {
+    derived.ok = false;
+    derived.error = err.message;
+  }
+
+  return derived;
 }
 
 function handleUniqueViolation(err, res) {
@@ -289,6 +551,8 @@ exports.getHierarchyTree = async (req, res, next) => {
     } else {
       return res.status(403).json({ ok: false, error: 'Rol no reconocido' });
     }
+
+    sites = await attachPozoConfigsToSites(sites);
 
     const tree = companies.map((company) => ({
       ...company,
@@ -462,7 +726,7 @@ exports.createSite = async (req, res, next) => {
     }
 
     if (!tipoSitio) {
-      return badRequest(res, 'tipo_sitio debe ser pozo, electrico o generico.');
+      return badRequest(res, 'tipo_sitio debe ser pozo, electrico, riles, proceso o generico.');
     }
 
     const subCompany = await getSubCompanyById(subEmpresaId);
@@ -571,7 +835,7 @@ exports.updateSite = async (req, res, next) => {
     }
 
     if (tipoSitio === null) {
-      return badRequest(res, 'tipo_sitio debe ser pozo, electrico o generico.');
+      return badRequest(res, 'tipo_sitio debe ser pozo, electrico, riles, proceso o generico.');
     }
 
     if (tipoSitio) {
@@ -678,6 +942,140 @@ exports.getDetectedDevices = async (req, res, next) => {
     );
 
     res.json({ ok: true, count: rows.length, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/sites/:siteId/dashboard-data
+ * Cruza sitio + pozo_config + reg_map + ultimo registro crudo de equipo.
+ * Devuelve valores ya transformados para que el frontend no calcule.
+ */
+exports.getSiteDashboardData = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
+    }
+
+    const [pozoConfigRes, mappingsRes, latestRes] = await Promise.all([
+      db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(
+        `
+        SELECT
+          time,
+          id_serial,
+          data,
+          ${formatTimestampMinus3('time')} AS timestamp_completo
+        FROM equipo
+        WHERE id_serial = $1
+        ORDER BY time DESC
+        LIMIT 1
+        `,
+        [site.id_serial]
+      ),
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const latest = latestRes.rows[0] || null;
+    const rawData = latest?.data || {};
+    const variables = [];
+    const resumen = {};
+
+    for (const mapping of mappingsRes.rows) {
+      const rawD1 = readRawValue(rawData, mapping.d1);
+      const rawD2 = readRawValue(rawData, mapping.d2);
+      const variable = {
+        id: mapping.id,
+        key: responseKeyForMapping(mapping),
+        alias: mapping.alias,
+        rol_dashboard: mapping.rol_dashboard || 'generico',
+        transformacion: normalizeTransform(mapping.transformacion),
+        unidad: mapping.unidad || null,
+        fuente: {
+          d1: mapping.d1,
+          d2: mapping.d2 || null,
+        },
+        crudo: {
+          d1: rawD1 ?? null,
+          d2: rawD2 ?? null,
+        },
+        ok: true,
+        valor: null,
+      };
+
+      try {
+        if (!latest) {
+          throw new Error(`No hay telemetria para el serial ${site.id_serial}`);
+        }
+
+        variable.valor = applyMappingTransform({ rawData, mapping, pozoConfig });
+      } catch (err) {
+        variable.ok = false;
+        variable.error = err.message;
+      }
+
+      variables.push(variable);
+
+      if (variable.rol_dashboard !== 'generico') {
+        resumen[variable.rol_dashboard] = {
+          ok: variable.ok,
+          valor: variable.valor,
+          unidad: variable.unidad,
+          alias: variable.alias,
+          error: variable.error || null,
+        };
+      }
+    }
+
+    const alreadyHasNivelFreatico = variables.some((variable) =>
+      variable.key === 'nivel_freatico' || variable.transformacion === 'nivel_freatico'
+    );
+    if (site.tipo_sitio === 'pozo' && !alreadyHasNivelFreatico) {
+      const nivelFreatico = buildDerivedNivelFreatico({ variables, pozoConfig, rawData });
+
+      if (nivelFreatico) {
+        variables.push(nivelFreatico);
+        resumen.nivel_freatico = {
+          ok: nivelFreatico.ok,
+          valor: nivelFreatico.valor,
+          unidad: nivelFreatico.unidad,
+          alias: nivelFreatico.alias,
+          fuente: nivelFreatico.fuente.variable,
+          error: nivelFreatico.error || null,
+        };
+      }
+    }
+
+    return res.json({
+      ok: true,
+      data: {
+        site: {
+          id: site.id,
+          descripcion: site.descripcion,
+          id_serial: site.id_serial,
+          tipo_sitio: site.tipo_sitio,
+        },
+        pozo_config: pozoConfig,
+        ultima_lectura: latest
+          ? {
+              time: latest.time,
+              timestamp_completo: latest.timestamp_completo,
+              id_serial: latest.id_serial,
+            }
+          : null,
+        resumen,
+        variables,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -986,7 +1384,7 @@ exports.getCompanySites = async (req, res, next) => {
         `SELECT ${SITE_COLUMNS} FROM sitio WHERE sub_empresa_id = $1 ORDER BY descripcion ASC`,
         [id]
       );
-      return res.json({ ok: true, data: rows });
+      return res.json({ ok: true, data: await attachPozoConfigsToSites(rows) });
     }
 
     if (tipo !== 'SuperAdmin' && id !== empresa_id) {
@@ -1007,7 +1405,7 @@ exports.getCompanySites = async (req, res, next) => {
     query += ' ORDER BY descripcion ASC';
 
     const { rows } = await db.query(query, params);
-    res.json({ ok: true, data: rows });
+    res.json({ ok: true, data: await attachPozoConfigsToSites(rows) });
   } catch (err) {
     next(err);
   }

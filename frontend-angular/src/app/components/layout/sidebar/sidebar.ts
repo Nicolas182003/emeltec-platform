@@ -1,319 +1,416 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
+
+interface SiteItem {
+  id: string;
+  label: string;
+}
+
+interface CompanyItem {
+  id: string;
+  name: string;
+  sites: SiteItem[];
+}
+
+interface ModuleDef {
+  key: string;
+  label: string;
+  icon: string;
+  color: string;
+  bg: string;
+  border: string;
+  companies: CompanyItem[];
+}
+
+const MODULES = [
+  { key: 'Agua', label: 'Consumo de Agua', icon: 'water_drop', color: '#0dafbd', bg: 'rgba(13,175,189,0.10)', border: 'rgba(13,175,189,0.25)' },
+  { key: 'Riles', label: 'Generacion de Riles', icon: 'waves', color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.20)' },
+  { key: 'Proceso', label: 'Variables de Proceso', icon: 'memory', color: '#6366f1', bg: 'rgba(99,102,241,0.08)', border: 'rgba(99,102,241,0.20)' },
+  { key: 'Electrico', label: 'Consumo Electrico', icon: 'bolt', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.20)' },
+  { key: '_other', label: 'Maletas Piloto', icon: 'rocket_launch', color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.20)' },
+];
 
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FormsModule],
+  imports: [CommonModule],
   template: `
-    <aside class="fixed left-0 top-16 bottom-0 z-40 flex w-[220px] flex-col overflow-y-auto border-r border-slate-200 bg-white pt-4 text-xs font-['Inter']">
-      <div class="px-3 pb-3 pt-1">
-        <div class="rounded-2xl border border-slate-200 bg-slate-50/90 px-2.5 py-2.5 shadow-[0_6px_18px_rgba(15,23,42,0.05)]">
-          <div class="flex items-center gap-2.5">
-            <div class="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[10px] font-black text-white shadow-sm">
+    <aside
+      class="flex h-full w-[190px] shrink-0 flex-col overflow-hidden bg-white"
+      style="border-right: 1px solid #dfe7f1; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
+    >
+      <div class="flex h-[42px] shrink-0 items-center justify-between border-b border-[#dfe7f1] px-3.5">
+        <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[21px] w-auto object-contain" />
+        <button
+          type="button"
+          class="flex h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8]"
+        >
+          <span class="material-symbols-outlined text-[16px]">keyboard_double_arrow_left</span>
+        </button>
+      </div>
+
+      <div class="mx-2 mt-2.5 rounded-lg border border-[#dfe7f1] bg-[#f8fafc] px-2 py-1.5">
+        <div class="flex items-center gap-1.5">
+          <div class="relative shrink-0">
+            <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[9px] font-bold text-white">
               {{ getUserInitials() }}
             </div>
-
-            <div class="min-w-0">
-              <p class="truncate text-[13px] font-black text-slate-700">{{ auth.user()?.nombre || 'Usuario' }}</p>
-              <p class="text-[10px] text-slate-400">{{ auth.user()?.tipo || 'Rol' }}</p>
-            </div>
+            <span class="absolute bottom-[1px] right-[1px] h-2 w-2 rounded-full border-[1.5px] border-[#f8fafc] bg-[#22c55e]"></span>
+          </div>
+          <div class="min-w-0">
+            <p class="truncate text-[12px] font-semibold leading-tight text-[#1e293b]">{{ auth.user()?.nombre || 'Usuario' }}</p>
+            <p class="text-[10px] text-[#94a3b8]">{{ auth.user()?.tipo || 'Rol' }}</p>
           </div>
         </div>
       </div>
 
-      <nav class="mb-4 flex flex-col gap-1 px-3">
-        <a
-          routerLink="/dashboard"
-          routerLinkActive="bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-100 font-bold"
-          class="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700"
-        >
-          <span class="material-symbols-outlined text-[18px]">grid_view</span>
-          <span class="text-[12px]">Dashboard</span>
-        </a>
-        @if (auth.isSuperAdmin()) {
-          <a
-            routerLink="/administration"
-            routerLinkActive="bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-100 font-bold"
-            class="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700"
-          >
-            <span class="material-symbols-outlined text-[18px]">settings_applications</span>
-            <span class="text-[12px]">Administracion</span>
-          </a>
-        }
-      </nav>
-
-      @if (auth.isSuperAdmin()) {
-        <div class="mb-2 px-3">
-          <div class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-100 bg-gradient-to-r from-cyan-50 to-teal-50 px-2.5 py-0.5">
-            <span class="material-symbols-outlined text-[15px] text-cyan-600">water_drop</span>
-            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-700">Consumo de Agua</h3>
-          </div>
-        </div>
-
-        <div class="flex flex-col space-y-0.5 px-2.5">
-          @for (company of filteredTree(); track company.id) {
-            @if (company.tipo_empresa === 'Agua') {
-              <div class="flex flex-col">
-                <div (click)="toggleItem(company.id)" class="group flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 transition-all hover:bg-slate-50">
-                  <span class="material-symbols-outlined text-[18px] text-slate-300 transition-transform group-hover:text-cyan-500" [class.rotate-90]="expanded[company.id]">keyboard_arrow_right</span>
-                  <span class="flex-1 truncate text-[12px] font-semibold text-slate-700">{{ company.nombre }}</span>
-                </div>
-
-                @if (expanded[company.id]) {
-                  <div class="ml-4 mt-0.5 flex flex-col gap-0.5">
-                    @for (sub of company.subCompanies; track sub.id) {
-                      <div
-                        (click)="selectSubCompany(sub.id)"
-                        [class]="'cursor-pointer rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all ' + (selectedId() === sub.id ? 'border-cyan-100 bg-cyan-50/80 text-cyan-800 shadow-[0_6px_14px_rgba(8,145,178,0.08)]' : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700')"
-                      >
-                        <span class="truncate">{{ sub.nombre }}</span>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
+      <div class="mx-2 mt-2">
+        <label class="relative block">
+          <span class="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[14px] text-[#94a3b8]">search</span>
+          <input
+            type="search"
+            [value]="searchTerm()"
+            (input)="onSearchInput($event)"
+            placeholder="Buscar empresa..."
+            class="h-8 w-full rounded-lg border border-[#dfe7f1] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[#8bdde5] focus:bg-[#faffff]"
+          />
+          @if (searchTerm()) {
+            <button
+              type="button"
+              (click)="clearSearch()"
+              class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#64748b]"
+              aria-label="Limpiar busqueda"
+            >
+              <span class="material-symbols-outlined text-[13px]">close</span>
+            </button>
           }
+        </label>
+      </div>
 
-          <div class="mb-2 mt-4 px-0.5">
-            <div class="inline-flex items-center gap-1.5 rounded-xl border border-amber-100 bg-gradient-to-r from-amber-50 to-orange-50 px-2.5 py-0.5">
-              <span class="material-symbols-outlined text-[15px] text-amber-500">bolt</span>
-              <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-amber-700">Suministro Eléctrico</h3>
-            </div>
-          </div>
+      <div class="mt-1.5 flex-1 overflow-y-auto pb-1.5">
+        @for (mod of moduleTree(); track mod.key) {
+          <div class="mx-1.5 my-px">
+            <button
+              type="button"
+              (click)="toggleModule(mod.key)"
+              class="flex w-full cursor-pointer select-none items-center rounded-lg transition-all duration-100"
+              [style.gap]="'7px'"
+              [style.justify-content]="'space-between'"
+              [style.padding]="'6px 7px'"
+              [style.color]="openModule() === mod.key ? '#0899a5' : '#475569'"
+              [style.background]="openModule() === mod.key ? 'rgba(13,175,189,0.06)' : 'transparent'"
+            >
+              <span class="flex min-w-0 items-center gap-[7px]">
+                <span
+                  class="flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-md"
+                  [style.background]="mod.bg"
+                  [style.border]="'1px solid ' + mod.border"
+                >
+                  <span class="material-symbols-outlined text-[13px]" [style.color]="mod.color">{{ mod.icon }}</span>
+                </span>
+                <span class="truncate text-left text-[12px] font-medium">{{ mod.label }}</span>
+              </span>
 
-          @for (company of filteredTree(); track company.id) {
-            @if (company.tipo_empresa === 'Eléctrico') {
-              <div class="flex flex-col">
-                <div (click)="toggleItem(company.id)" class="group flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 transition-all hover:bg-slate-50">
-                  <span class="material-symbols-outlined text-[18px] text-slate-300 transition-transform group-hover:text-amber-500" [class.rotate-90]="expanded[company.id]">keyboard_arrow_right</span>
-                  <span class="flex-1 truncate text-[12px] font-semibold text-slate-700">{{ company.nombre }}</span>
-                </div>
+              @if (mod.companies.length > 0) {
+                <span
+                  class="material-symbols-outlined shrink-0 text-[12px] text-[#cbd5e1] transition-transform"
+                  [style.transform]="openModule() === mod.key ? 'rotate(90deg)' : 'none'"
+                >
+                  chevron_right
+                </span>
+              }
+            </button>
 
-                @if (expanded[company.id]) {
-                  <div class="ml-4 mt-0.5 flex flex-col gap-0.5">
-                    @for (sub of company.subCompanies; track sub.id) {
-                      <div
-                        (click)="selectSubCompany(sub.id)"
-                        [class]="'cursor-pointer rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all ' + (selectedId() === sub.id ? 'border-cyan-100 bg-cyan-50/80 text-cyan-800 shadow-[0_6px_14px_rgba(8,145,178,0.08)]' : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700')"
-                      >
-                        <span class="truncate">{{ sub.nombre }}</span>
-                      </div>
-                    }
-                  </div>
-                }
-              </div>
-            }
-          }
+            @if (openModule() === mod.key && mod.companies.length > 0) {
+              <div class="mb-0.5 pl-2.5">
+                @for (company of mod.companies; track company.id) {
+                  <button
+                    type="button"
+                    (click)="toggleCompany(company.id)"
+                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[3px] text-left text-[9px] font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b]"
+                  >
+                    <span
+                      class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[11px] leading-none"
+                      [style.border-color]="isCompanyOpen(company.id) ? mod.color : '#dfe7f1'"
+                      [style.color]="isCompanyOpen(company.id) ? mod.color : '#94a3b8'"
+                      [style.background]="isCompanyOpen(company.id) ? mod.bg : '#ffffff'"
+                    >
+                      {{ isCompanyOpen(company.id) ? '-' : '+' }}
+                    </span>
+                    <span class="truncate">{{ company.name }}</span>
+                  </button>
 
-          @if (hasOtherTypes()) {
-            <div class="mb-2 mt-4 px-0.5">
-              <div class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-                <span class="material-symbols-outlined text-[15px] text-slate-500">factory</span>
-                <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-600">Industrial</h3>
-              </div>
-            </div>
-
-            @for (company of filteredTree(); track company.id) {
-              @if (company.tipo_empresa !== 'Agua' && company.tipo_empresa !== 'Eléctrico') {
-                <div class="flex flex-col">
-                  <div (click)="toggleItem(company.id)" class="group flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1.5 transition-all hover:bg-slate-50">
-                    <span class="material-symbols-outlined text-[18px] text-slate-300 transition-transform group-hover:text-slate-500" [class.rotate-90]="expanded[company.id]">keyboard_arrow_right</span>
-                    <span class="flex-1 truncate text-[12px] font-semibold text-slate-700">{{ company.nombre }}</span>
-                  </div>
-
-                  @if (expanded[company.id]) {
-                    <div class="ml-4 mt-0.5 flex flex-col gap-0.5">
-                      @for (sub of company.subCompanies; track sub.id) {
-                        <div
-                          (click)="selectSubCompany(sub.id)"
-                          [class]="'cursor-pointer rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all ' + (selectedId() === sub.id ? 'border-cyan-100 bg-cyan-50/80 text-cyan-800 shadow-[0_6px_14px_rgba(8,145,178,0.08)]' : 'border-transparent text-slate-500 hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700')"
+                  @if (isCompanyOpen(company.id)) {
+                    <div class="relative ml-2.5 pl-2.5">
+                      <span class="absolute bottom-[6px] left-1 top-0 w-px bg-[#e2e8f0]"></span>
+                      @for (site of company.sites; track site.id) {
+                        <button
+                          type="button"
+                          (click)="selectSubCompany($event, mod.key, company.id, site.id)"
+                          class="relative mb-px block w-full cursor-pointer rounded-md py-[3px] pl-2 pr-1.5 text-left text-[10.5px] transition-all duration-100"
+                          [style.color]="activeSiteId() === site.id ? '#0899a5' : '#64748b'"
+                          [style.font-weight]="activeSiteId() === site.id ? '600' : '400'"
+                          [style.background]="activeSiteId() === site.id ? 'rgba(13,175,189,0.06)' : 'transparent'"
                         >
-                          <span class="truncate">{{ sub.nombre }}</span>
-                        </div>
+                          <span
+                            class="absolute left-[-10px] top-1/2 block h-px w-2"
+                            [style.background]="activeSiteId() === site.id ? '#0dafbd' : '#e2e8f0'"
+                          ></span>
+                          <span class="block truncate">{{ site.label }}</span>
+                        </button>
                       }
                     </div>
                   }
-                </div>
-              }
-            }
-          }
-        </div>
-      }
-
-      @if (auth.isAdmin()) {
-        <div class="mb-2 px-3">
-          <div class="inline-flex items-center gap-1.5 rounded-xl border border-sky-100 bg-sky-50 px-2.5 py-1.5">
-            <span class="material-symbols-outlined text-[15px] text-sky-600">domain</span>
-            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Mi Empresa</h3>
-          </div>
-        </div>
-
-      @if (auth.isGerente()) {
-        <div class="mb-2 px-3">
-          <div class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-2.5 py-1.5">
-            <span class="material-symbols-outlined text-[15px] text-emerald-600">shield_person</span>
-            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Mi División</h3>
-          </div>
-        </div>
-
-        <div class="flex flex-col space-y-1 px-2.5">
-          @for (company of filteredTree(); track company.id) {
-            <div class="flex flex-col">
-              <div class="mb-1 flex items-center gap-2 rounded-xl bg-slate-50 px-2.5 py-1.5">
-                <span class="material-symbols-outlined text-[16px] text-sky-600">corporate_fare</span>
-                <span class="flex-1 truncate text-[12px] font-bold text-slate-700">{{ company.nombre }}</span>
-              </div>
-
-              <div class="ml-2 flex flex-col gap-0.5">
-                @for (sub of company.subCompanies; track sub.id) {
-                  <div
-                    (click)="selectSubCompany(sub.id)"
-                    [class]="'flex cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 transition-all ' + (selectedId() === sub.id ? 'bg-cyan-50 text-cyan-800 ring-1 ring-cyan-100 shadow-sm font-bold' : 'text-slate-500 hover:bg-slate-50 font-medium')"
-                  >
-                    <span class="material-symbols-outlined text-[15px]" [class.text-cyan-700]="selectedId() === sub.id">factory</span>
-                    <span class="truncate text-[11px]">{{ sub.nombre }}</span>
-                    @if (sub.sites?.length) {
-                      <span class="ml-auto rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] text-slate-400">{{ sub.sites.length }}</span>
-                    }
-                  </div>
                 }
               </div>
-            </div>
-          }
-        </div>
-      }
-
-        <div class="flex flex-col space-y-1 px-2.5">
-          @for (company of filteredTree(); track company.id) {
-            <div class="flex items-center gap-1.5 px-2.5 py-1 text-slate-400">
-              <span class="material-symbols-outlined text-[14px]">domain</span>
-              <span class="truncate text-[10px] font-medium">{{ company.nombre }}</span>
-            </div>
-
-            @for (sub of company.subCompanies; track sub.id) {
-              <div
-                (click)="selectSubCompany(sub.id)"
-                class="flex cursor-pointer items-center gap-2 rounded-xl bg-cyan-50/70 px-3 py-2 text-cyan-800 ring-1 ring-cyan-100 shadow-sm"
-              >
-                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-                  <span class="material-symbols-outlined text-[15px] text-emerald-600">factory</span>
-                </div>
-                <div class="min-w-0">
-                  <span class="block truncate text-[11px] font-bold">{{ sub.nombre }}</span>
-                  <span class="text-[9px] font-medium text-slate-400">Encargado de División</span>
-                </div>
-              </div>
             }
-          }
-
-          <a routerLink="/companies" class="mt-3 flex cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 text-[11px] font-medium text-slate-500 transition-all hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[16px]">group</span>
-            <span>Mi Equipo</span>
-          </a>
-        </div>
-      }
-
-      @if (auth.isCliente()) {
-        <div class="mb-2 px-3">
-          <div class="inline-flex items-center gap-1.5 rounded-xl border border-blue-100 bg-blue-50 px-2.5 py-1.5">
-            <span class="material-symbols-outlined text-[15px] text-blue-500">visibility</span>
-            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-blue-700">Mi Vista</h3>
           </div>
-        </div>
+        }
 
-        <div class="flex flex-col space-y-1 px-2.5">
-          @for (company of filteredTree(); track company.id) {
-            <div class="flex items-center gap-1.5 px-2.5 py-1 text-slate-400">
-              <span class="material-symbols-outlined text-[14px]">domain</span>
-              <span class="truncate text-[10px] font-medium">{{ company.nombre }}</span>
-            </div>
+        @if (searchTerm() && !hasSearchResults()) {
+          <div class="mx-2 mt-2 rounded-lg border border-dashed border-[#dfe7f1] bg-[#f8fafc] px-2 py-2 text-center text-[11px] font-medium text-[#94a3b8]">
+            Sin resultados
+          </div>
+        }
+      </div>
 
-            @for (sub of company.subCompanies; track sub.id) {
-              <div
-                (click)="selectSubCompany(sub.id)"
-                class="flex cursor-pointer items-center gap-2 rounded-xl bg-blue-50/70 px-3 py-2 text-blue-800 ring-1 ring-blue-100 shadow-sm"
-              >
-                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
-                  <span class="material-symbols-outlined text-[15px] text-blue-500">factory</span>
-                </div>
-                <div class="min-w-0">
-                  <span class="block truncate text-[11px] font-bold">{{ sub.nombre }}</span>
-                  <span class="text-[9px] font-medium text-slate-400">Solo lectura</span>
-                </div>
-              </div>
-            }
-          }
-        </div>
-      }
-
-      <div class="flex-1"></div>
+      <div class="shrink-0 border-t border-[#dfe7f1] p-1.5">
+        <button
+          type="button"
+          (click)="auth.logout()"
+          class="flex w-full items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 py-1.5 text-[#94a3b8] transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626]"
+        >
+          <span class="material-symbols-outlined text-[16px]">logout</span>
+          <span class="text-[12px]">Cerrar sesion</span>
+        </button>
+      </div>
     </aside>
   `,
 })
 export class SidebarComponent implements OnInit {
-  companyService = inject(CompanyService);
-  auth = inject(AuthService);
-  router = inject(Router);
+  readonly auth = inject(AuthService);
+  readonly companyService = inject(CompanyService);
+  readonly router = inject(Router);
 
-  expanded: Record<string, boolean> = {};
-  filteredTree = signal<any[]>([]);
-  selectedId = this.companyService.selectedSubCompanyId;
+  openModule = signal<string | null>('Agua');
+  searchTerm = signal('');
+  expandedCompanyIds = signal<Set<string>>(new Set());
+  activeSiteId = this.companyService.selectedSubCompanyId;
 
-  getUserInitials(): string {
-    const user = this.auth.user();
-    const first = user?.nombre?.charAt(0) ?? '';
-    const last = user?.apellido?.charAt(0) ?? '';
-    const initials = `${first}${last}`.trim();
+  moduleTree = computed<ModuleDef[]>(() => {
+    const tree = this.companyService.hierarchy();
+    const tokens = this.getSearchTokens(this.searchTerm());
 
-    return (initials || first || 'U').toUpperCase();
-  }
+    const modules = MODULES.map(def => {
+      const companies = tree
+        .filter((company: any) => this.matchesModule(company.tipo_empresa, def.key))
+        .map((company: any) => this.toCompanyItem(def, company, tokens))
+        .filter((company): company is CompanyItem => Boolean(company));
 
-  ngOnInit() {
-    this.companyService.fetchHierarchy().subscribe((res: any) => {
-      if (res.ok) {
-        this.filteredTree.set(res.data);
+      return { ...def, companies };
+    });
 
-        if (res.data.length > 0) {
-          const firstCompany = res.data[0];
+    return tokens.length ? modules.filter(module => module.companies.length > 0) : modules;
+  });
 
-          if (this.auth.isSuperAdmin()) {
-            this.expanded[firstCompany.id] = true;
-            if (firstCompany.subCompanies?.[0]) {
-              this.setSelectedSubCompany(firstCompany.subCompanies[0].id);
-            }
-          } else if (this.auth.isAdmin()) {
-            this.expanded[firstCompany.id] = true;
-            if (firstCompany.subCompanies?.[0] && !this.selectedId()) {
-              this.setSelectedSubCompany(firstCompany.subCompanies[0].id);
-            }
-          } else if (firstCompany.subCompanies?.[0]) {
-            this.setSelectedSubCompany(firstCompany.subCompanies[0].id);
-          }
-        }
+  hasSearchResults = computed(() => {
+    if (!this.searchTerm().trim()) {
+      return true;
+    }
+
+    return this.moduleTree().some(module => module.companies.length > 0);
+  });
+
+  ngOnInit(): void {
+    this.companyService.fetchHierarchy().subscribe(() => {
+      if (this.searchTerm().trim()) {
+        this.syncOpenStateWithSearch();
+      } else {
+        this.initializeSelection();
       }
     });
   }
 
-  toggleItem(id: string) {
-    this.expanded[id] = !this.expanded[id];
+  toggleModule(key: string): void {
+    this.openModule.update(current => (current === key ? null : key));
   }
 
-  selectSubCompany(id: string) {
-    this.setSelectedSubCompany(id);
+  toggleCompany(companyId: string): void {
+    this.expandedCompanyIds.update(current => {
+      const next = new Set(current);
+
+      if (next.has(companyId)) {
+        next.delete(companyId);
+      } else {
+        next.add(companyId);
+      }
+
+      return next;
+    });
+  }
+
+  isCompanyOpen(companyId: string): boolean {
+    return this.expandedCompanyIds().has(companyId);
+  }
+
+  selectSubCompany(event: Event, moduleKey: string, companyId: string, subCompanyId: string): void {
+    event.stopPropagation();
+    this.companyService.selectedSubCompanyId.set(subCompanyId);
+    this.openModule.set(moduleKey);
+    this.expandCompany(companyId);
     this.router.navigate(['/companies']);
   }
 
-  private setSelectedSubCompany(id: string) {
-    this.companyService.selectedSubCompanyId.set(id);
+  onSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    this.searchTerm.set(input?.value || '');
+    this.syncOpenStateWithSearch();
   }
 
-  hasOtherTypes(): boolean {
-    return this.filteredTree().some(c => c.tipo_empresa !== 'Agua' && c.tipo_empresa !== 'Eléctrico');
+  clearSearch(): void {
+    this.searchTerm.set('');
+    this.expandedCompanyIds.set(new Set());
+    this.openActivePath();
+  }
+
+  getUserInitials(): string {
+    const user = this.auth.user();
+    if (!user) return 'U';
+
+    const first = user.nombre?.charAt(0) ?? '';
+    const last = user.apellido?.charAt(0) ?? '';
+    return `${first}${last}`.trim().toUpperCase() || user.nombre.substring(0, 2).toUpperCase();
+  }
+
+  private matchesModule(type: string, key: string): boolean {
+    const normalized = (type || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    if (key === 'Agua') return normalized.includes('agua');
+    if (key === 'Riles') return normalized.includes('ril');
+    if (key === 'Proceso') return normalized.includes('proceso') || normalized.includes('variable');
+    if (key === 'Electrico') return normalized.includes('elect');
+
+    return !['agua', 'ril', 'proceso', 'variable', 'elect'].some(value => normalized.includes(value));
+  }
+
+  private initializeSelection(): void {
+    if (this.openActivePath()) {
+      return;
+    }
+
+    const firstModule = this.moduleTree().find(module => module.companies.some(company => company.sites.length));
+    const firstSubCompany = firstModule?.companies[0]?.sites[0];
+
+    if (firstModule) {
+      this.openModule.set(firstModule.key);
+    }
+
+    if (firstSubCompany) {
+      this.companyService.selectedSubCompanyId.set(firstSubCompany.id);
+      this.expandCompany(firstModule.companies[0].id);
+    }
+  }
+
+  private toCompanyItem(def: (typeof MODULES)[number], company: any, tokens: string[]): CompanyItem | null {
+    const sites: SiteItem[] = (company.subCompanies || []).map((sub: any) => ({
+      id: sub.id,
+      label: sub.nombre || sub.descripcion || sub.id,
+    }));
+
+    const item: CompanyItem = {
+      id: company.id,
+      name: company.nombre,
+      sites,
+    };
+
+    if (!tokens.length) {
+      return item;
+    }
+
+    const companyTarget = this.normalizeSearch(`${def.label} ${def.key} ${item.name}`);
+    const companyMatches = this.matchesTokens(companyTarget, tokens);
+    const filteredSites = sites.filter(site => {
+      const target = this.normalizeSearch(`${def.label} ${def.key} ${item.name} ${site.label}`);
+      return this.matchesTokens(target, tokens);
+    });
+
+    if (companyMatches) {
+      return item;
+    }
+
+    if (filteredSites.length) {
+      return { ...item, sites: filteredSites };
+    }
+
+    return null;
+  }
+
+  private syncOpenStateWithSearch(): void {
+    if (!this.searchTerm().trim()) {
+      this.expandedCompanyIds.set(new Set());
+      this.openActivePath();
+      return;
+    }
+
+    const firstModule = this.moduleTree().find(module => module.companies.length > 0);
+
+    if (!firstModule) {
+      this.expandedCompanyIds.set(new Set());
+      return;
+    }
+
+    this.openModule.set(firstModule.key);
+    this.expandedCompanyIds.set(new Set(firstModule.companies.map(company => company.id)));
+  }
+
+  private openActivePath(): boolean {
+    const activeId = this.activeSiteId();
+
+    if (!activeId) {
+      return false;
+    }
+
+    for (const module of this.moduleTree()) {
+      const company = module.companies.find(item => item.sites.some(site => site.id === activeId));
+
+      if (company) {
+        this.openModule.set(module.key);
+        this.expandCompany(company.id);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private expandCompany(companyId: string): void {
+    this.expandedCompanyIds.update(current => {
+      if (current.has(companyId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(companyId);
+      return next;
+    });
+  }
+
+  private getSearchTokens(value: string): string[] {
+    return this.normalizeSearch(value).split(/\s+/).filter(Boolean);
+  }
+
+  private normalizeSearch(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private matchesTokens(target: string, tokens: string[]): boolean {
+    return tokens.every(token => target.includes(token) || (token.length >= 5 && target.includes(token.slice(0, 5))));
   }
 }

@@ -144,6 +144,29 @@ SELECT create_hypertable(
 );
 
 -- -------------------------------------------
+-- Auditoría
+-- -------------------------------------------
+
+CREATE TABLE IF NOT EXISTS audit_log (
+    id            BIGSERIAL    PRIMARY KEY,
+    ts            TIMESTAMPTZ  DEFAULT NOW(),
+    usuario_id    VARCHAR(50),
+    usuario_email VARCHAR(200),
+    usuario_tipo  VARCHAR(20),
+    accion        VARCHAR(20)  NOT NULL,
+    entidad       VARCHAR(50)  NOT NULL,
+    entidad_id    VARCHAR(100),
+    detalle       JSONB        DEFAULT '{}',
+    descripcion   TEXT,
+    ip            VARCHAR(50),
+    ubicacion     VARCHAR(200)
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_ts      ON audit_log (ts DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON audit_log (entidad, entidad_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_usuario ON audit_log (usuario_id);
+
+-- -------------------------------------------
 -- Índices
 -- -------------------------------------------
 

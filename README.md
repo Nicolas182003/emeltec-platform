@@ -1,24 +1,109 @@
 # Emeltec Platform
 
-Plataforma Emeltec para monitoreo industrial, administracion de empresas, autenticacion, APIs de telemetria e infraestructura de despliegue.
+Emeltec Platform es una plataforma web para monitoreo industrial, administracion de empresas, gestion de usuarios, visualizacion de instalaciones y procesamiento de datos operativos.
 
-## Estructura del repo
+El proyecto esta disenado como una aplicacion multi-servicio desplegada con Docker Compose. Incluye un frontend Angular, APIs Node.js, una base de datos TimescaleDB/PostgreSQL, un pipeline gRPC y configuracion de infraestructura para operar en una VM Linux.
+
+## Objetivo
+
+La plataforma centraliza informacion de instalaciones industriales y entrega herramientas para operar modulos como:
+
+- Consumo de agua.
+- Generacion de riles.
+- Variables de proceso.
+- Consumo electrico.
+- Maletas piloto.
+- Administracion de usuarios, empresas, sitios e instalaciones.
+
+El frontend consume APIs internas mediante rutas relativas (`/api/...`). En desarrollo esas rutas se pueden resolver con el proxy de Angular o con Docker Compose. En produccion, Nginx y los contenedores de la VM enrutan el trafico hacia los servicios correspondientes.
+
+## Arquitectura
+
+| Capa | Tecnologia | Descripcion |
+|---|---|---|
+| Frontend | Angular | Interfaz web principal de la plataforma. |
+| API principal | Node.js + Express | Gestion de empresas, sitios, usuarios, datos y consultas operativas. |
+| Auth API | Node.js + Express | Autenticacion, JWT, usuarios y codigos de acceso. |
+| Base de datos | TimescaleDB/PostgreSQL | Persistencia relacional y datos de telemetria. |
+| Pipeline | Go + gRPC | Procesamiento e ingestion de datos. |
+| Proxy/servidor web | Nginx | Publicacion del frontend y enrutamiento de APIs en produccion. |
+| Deploy | Docker Compose + GitHub Actions | Construccion, reinicio y despliegue automatico en VM. |
+
+## Estructura del repositorio
 
 | Ruta | Proposito |
 |---|---|
 | `frontend-angular/` | Frontend oficial Angular. Es el unico frontend usado por Docker Compose y GitHub Actions. |
-| `main-api/` | API principal Node.js/Express: empresas, sitios, usuarios, datos, metricas y alertas. |
-| `auth-api/` | API de autenticacion y codigos de acceso. |
-| `grpc-pipeline/` | Pipeline Go/gRPC para procesamiento e ingestion. |
+| `main-api/` | API principal de la plataforma. |
+| `auth-api/` | Servicio de autenticacion. |
+| `grpc-pipeline/` | Servicios Go/gRPC para procesamiento de datos. |
 | `metrics-page/` | Pagina liviana de metricas operativas. |
-| `infra-db/` | Inicializacion y migraciones de base de datos. |
-| `infra-nginx/` | Configuracion de Nginx externo para la VM. |
+| `infra-db/` | Scripts de inicializacion y migraciones de base de datos. |
+| `infra-nginx/` | Configuracion Nginx usada en la VM. |
 | `scripts/` | Scripts operativos, incluido el deploy remoto. |
-| `docs/` | Documentacion del proyecto y despliegue. |
+| `docs/` | Documentacion tecnica del proyecto. |
 
-## Desarrollo frontend
+## Requisitos
 
-Frontend local con backend local:
+- Git.
+- Node.js compatible con Angular 21.
+- npm.
+- Docker Desktop o Docker Engine.
+- Docker Compose.
+
+## Configuracion local
+
+Antes de levantar los servicios, crea el archivo de entorno local para las APIs:
+
+```bash
+cp main-api/.env.example main-api/.env
+```
+
+Edita `main-api/.env` con los valores que correspondan para tu ambiente. Ese archivo tambien alimenta a `auth-api` dentro de Docker Compose, por lo que valores como `JWT_SECRET` e `INTERNAL_API_KEY` deben mantenerse consistentes.
+
+Los secretos reales de produccion no deben versionarse en Git.
+
+## Levantar todo en local
+
+Desde la raiz del repositorio:
+
+```bash
+docker compose up -d --build
+```
+
+Servicios principales:
+
+| Servicio | URL local |
+|---|---|
+| Frontend | `http://localhost:5173` |
+| Main API | `http://localhost:3000` |
+| Auth API | `http://localhost:3001` |
+| Metrics page | `http://localhost:8081` |
+| PostgreSQL/TimescaleDB | `localhost:5433` |
+
+Para revisar el estado:
+
+```bash
+docker compose ps
+```
+
+Para ver logs:
+
+```bash
+docker compose logs -f main-api
+docker compose logs -f auth-api
+docker compose logs -f frontend-angular
+```
+
+Para detener el ambiente:
+
+```bash
+docker compose down
+```
+
+## Desarrollo del frontend
+
+Tambien puedes trabajar solo el frontend con el servidor de desarrollo de Angular:
 
 ```bash
 cd frontend-angular
@@ -26,41 +111,50 @@ npm install
 npm start
 ```
 
-Frontend local usando el backend de produccion en la VM:
-
-```bash
-cd frontend-angular
-npm install
-npm run start:production-api
-```
-
 Luego abre:
 
 ```text
-http://127.0.0.1:4300
+http://localhost:4200
 ```
 
-## Validacion rapida
+Para probar integracion completa, las APIs necesarias deben estar levantadas y accesibles segun la configuracion del proxy del frontend.
+
+## Validacion
+
+Build del frontend:
 
 ```bash
 cd frontend-angular
 npm run build -- --configuration=production
 ```
 
-Desde la raiz del repo:
+Validar Docker Compose desde la raiz:
 
 ```bash
 docker compose config --quiet
 ```
 
-## Deploy
+## Produccion y VM
 
-El deploy de produccion se ejecuta automaticamente con GitHub Actions al hacer push o merge a `main`.
+Produccion esta pensada para ejecutarse en una VM Linux con Docker Compose. El deploy se realiza automaticamente con GitHub Actions cuando se hace merge o push a `main`.
 
-Documentacion:
+El flujo general es:
+
+1. GitHub Actions valida el proyecto.
+2. GitHub se conecta por SSH a la VM.
+3. La VM actualiza el repositorio.
+4. Docker Compose reconstruye y reinicia los servicios.
+5. Nginx publica el frontend y enruta las APIs bajo el dominio configurado.
+
+La documentacion especifica de despliegue esta en:
 
 ```text
 docs/deployment.md
 ```
 
-El flujo actual construye y reinicia los servicios definidos en `docker-compose.yml`.
+## Notas de mantenimiento
+
+- `frontend-angular/` es el frontend oficial del proyecto.
+- Los archivos `.env` reales deben mantenerse fuera del repositorio.
+- Los cambios a `main` pueden ejecutar el flujo de despliegue configurado en GitHub Actions.
+- Antes de mergear cambios funcionales, valida build y Docker Compose.

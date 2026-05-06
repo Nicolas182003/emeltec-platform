@@ -1,26 +1,48 @@
 # Frontend Angular
 
-Frontend oficial de la plataforma Emeltec.
+Frontend oficial de Emeltec Platform.
 
-## Comandos
+Esta aplicacion entrega la interfaz web para monitoreo industrial, navegacion por empresas e instalaciones, dashboards operativos y modulos administrativos. El frontend se comunica con las APIs mediante rutas relativas (`/api/...`) para que el mismo codigo pueda funcionar en desarrollo y en produccion.
 
-Instalar dependencias:
+## Tecnologia
+
+- Angular 21.
+- TypeScript.
+- Tailwind CSS.
+- Chart.js.
+- Lucide Angular.
+
+## Requisitos
+
+- Node.js compatible con Angular 21.
+- npm.
+- APIs disponibles si se quiere probar integracion completa.
+
+## Instalacion
+
+Desde esta carpeta:
 
 ```bash
 npm install
 ```
 
-Levantar contra backend local:
+## Desarrollo local
+
+Levanta el servidor de desarrollo:
 
 ```bash
 npm start
 ```
 
-Levantar contra backend de produccion en la VM:
+Abre:
 
-```bash
-npm run start:production-api
+```text
+http://localhost:4200
 ```
+
+Durante desarrollo local, Angular puede usar `proxy.conf.json` para redirigir las llamadas `/api/...` hacia los servicios configurados. Para probar login, empresas, usuarios o datos reales del sistema, las APIs deben estar ejecutandose y accesibles.
+
+## Build
 
 Build de produccion:
 
@@ -28,11 +50,46 @@ Build de produccion:
 npm run build -- --configuration=production
 ```
 
-## Proxies
+La salida se genera en:
 
-| Archivo | Uso |
+```text
+dist/frontend-angular
+```
+
+En el despliegue real, este build se ejecuta dentro de Docker mediante el `Dockerfile` del frontend y luego se sirve con Nginx.
+
+## Estructura principal
+
+| Ruta | Proposito |
 |---|---|
-| `proxy.conf.json` | Desarrollo local con servicios locales. |
-| `proxy.production.conf.json` | Desarrollo local consumiendo `https://nuevacloud.emeltec.cl`. |
+| `src/app/components/` | Componentes reutilizables de layout, UI y visualizacion. |
+| `src/app/pages/` | Paginas principales de la aplicacion. |
+| `src/app/services/` | Servicios Angular para comunicacion con APIs. |
+| `src/app/guards/` | Protecciones de rutas. |
+| `src/app/interceptors/` | Interceptores HTTP. |
+| `src/styles.css` | Estilos globales. |
 
-La aplicacion usa rutas relativas (`/api/...`), por lo que el proxy de Angular decide si las llamadas van a servicios locales o a la VM.
+## Integracion con APIs
+
+El frontend debe priorizar rutas relativas en lugar de URLs absolutas dentro del codigo:
+
+```text
+/api/auth/login
+/api/companies
+/api/users
+```
+
+Esto permite que:
+
+- En desarrollo, el proxy de Angular resuelva las llamadas segun el ambiente configurado.
+- En produccion, Nginx y Docker enruten el trafico hacia los servicios correctos.
+
+## Validacion antes de subir cambios
+
+Antes de abrir un PR o hacer merge, ejecuta:
+
+```bash
+npm run build -- --configuration=production
+```
+
+Si el cambio toca integracion con APIs, valida tambien el flujo completo levantando el proyecto desde la raiz con Docker Compose.

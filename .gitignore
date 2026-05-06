@@ -50,3 +50,7 @@ Thumbs.db
 
 # Local-only demos
 main-api/demo/
+
+# Local-only seed/test data scripts
+seed.js
+main-api/src/seed_*.js

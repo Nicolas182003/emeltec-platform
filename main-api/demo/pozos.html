@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculadora IEEE 754 — Pozos</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --teal:    #0DAFBD;
+      --teal-dk: #0899A5;
+      --bg:      #F0F2F5;
+      --surface: #FFFFFF;
+      --border:  #E2E8F0;
+      --text:    #1E293B;
+      --muted:   #64748B;
+      --dim:     #94A3B8;
+      --green:   #22C55E;
+      --red:     #F87171;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+    .hdr { background: var(--surface); border-bottom: 1px solid var(--border); height: 56px; display: flex; align-items: center; padding: 0 28px; gap: 12px; }
+    .hdr-logo { font-weight: 700; font-size: 17px; color: var(--teal-dk); }
+    .hdr-sep  { width: 1px; height: 18px; background: var(--border); }
+    .hdr-sub  { color: var(--muted); font-size: 13px; }
+
+    .main { max-width: 900px; margin: 32px auto; padding: 0 20px; display: flex; flex-direction: column; gap: 20px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+    .card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-bottom: 20px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+    .form-group input, .form-group select {
+      height: 38px; border: 1px solid var(--border); border-radius: 6px;
+      padding: 0 12px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
+      color: var(--text); background: #fff; outline: none; transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--teal); }
+
+    .btn {
+      height: 38px; padding: 0 20px; border-radius: 6px; border: none; cursor: pointer;
+      font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 14px; transition: background .15s;
+    }
+    .btn-primary { background: var(--teal); color: #fff; }
+    .btn-primary:hover { background: var(--teal-dk); }
+    .btn-primary:disabled { background: var(--dim); cursor: not-allowed; }
+    .btn-row { display: flex; gap: 10px; margin-top: 20px; align-items: center; }
+
+    .status { font-size: 13px; color: var(--muted); }
+    .status.ok  { color: var(--green); }
+    .status.err { color: var(--red); }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat { background: var(--bg); border-radius: 8px; padding: 16px; }
+    .stat-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin-bottom: 6px; }
+    .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 600; color: var(--teal); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #F8FAFC; padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+      color: var(--dim); border-bottom: 1px solid var(--border);
+    }
+    tbody td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #F8FAFC; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .teal { color: var(--teal); font-weight: 600; }
+
+    .empty { text-align: center; padding: 40px; color: var(--dim); font-size: 13px; }
+    .table-wrap { max-height: 420px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <span class="hdr-logo">Emeltec</span>
+  <div class="hdr-sep"></div>
+  <span class="hdr-sub">Calculadora IEEE 754 — Pozos</span>
+</div>
+
+<div class="main">
+
+  <!-- Formulario -->
+  <div class="card">
+    <div class="card-title">Parámetros</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Serial ID</label>
+        <input id="serial_id" type="text" value="POZO-TEST-001" placeholder="ej: 151.21.49.121" />
+      </div>
+      <div class="form-group">
+        <label>Registro High Word</label>
+        <input id="reg_alta" type="text" value="REG5" placeholder="ej: REG5" />
+      </div>
+      <div class="form-group">
+        <label>Registro Low Word</label>
+        <input id="reg_baja" type="text" value="REG6" placeholder="ej: REG6" />
+      </div>
+      <div class="form-group">
+        <label>Guardado</label>
+        <select id="periodo">
+          <option value="day">Dia</option>
+          <option value="week">Semana</option>
+          <option value="month">Mes</option>
+          <option value="year">Ano</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Rango</label>
+        <select id="bucket_start"></select>
+      </div>
+      <div class="form-group">
+        <label>Word Swap</label>
+        <select id="word_swap">
+          <option value="false">No (ABCD — Big-Endian)</option>
+          <option value="true">Sí (CDAB — Schneider/ABB)</option>
+        </select>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnConsultar" onclick="consultar()">Consultar</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+
+  <!-- Estadísticas -->
+  <div class="card" id="statsCard" style="display:none">
+    <div class="card-title">Resumen</div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-label">Total lecturas</div><div class="stat-value" id="sTotal">—</div></div>
+      <div class="stat"><div class="stat-label">Valor mínimo</div><div class="stat-value" id="sMin">—</div></div>
+      <div class="stat"><div class="stat-label">Valor máximo</div><div class="stat-value" id="sMax">—</div></div>
+      <div class="stat"><div class="stat-label">Promedio</div><div class="stat-value" id="sAvg">—</div></div>
+    </div>
+  </div>
+
+  <!-- Tabla de resultados -->
+  <div class="card">
+    <div class="card-title">Lecturas</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Valor (float32)</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="4" class="empty">Complete el formulario y presione Consultar</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const API = 'http://localhost:3000';
+
+  window.addEventListener('DOMContentLoaded', () => {
+    cargarPeriodos();
+    ['serial_id', 'reg_alta', 'reg_baja', 'periodo'].forEach(id => {
+      document.getElementById(id).addEventListener('change', cargarPeriodos);
+    });
+  });
+
+  async function cargarPeriodos() {
+    const status = document.getElementById('status');
+    const select = document.getElementById('bucket_start');
+    const params = new URLSearchParams({
+      serial_id: document.getElementById('serial_id').value.trim(),
+      reg_alta: document.getElementById('reg_alta').value.trim(),
+      reg_baja: document.getElementById('reg_baja').value.trim(),
+      periodo: document.getElementById('periodo').value,
+    });
+
+    select.innerHTML = '<option value="">Cargando rangos...</option>';
+
+    try {
+      const res = await fetch(`${API}/api/pozos/ieee754/periodos?${params.toString()}`);
+      const json = await res.json();
+
+      if (!json.ok || !json.periodos.length) {
+        select.innerHTML = '<option value="">Sin rangos disponibles</option>';
+        status.className = 'status err';
+        status.textContent = 'No hay rangos con datos para esos registros';
+        return;
+      }
+
+      select.innerHTML = json.periodos.map(periodo => `
+        <option value="${periodo.bucket_start}">
+          ${periodo.inicio} -> ${periodo.fin} (${periodo.total} lecturas)
+        </option>
+      `).join('');
+      status.className = 'status';
+      status.textContent = `${json.periodos.length} rangos disponibles`;
+    } catch (e) {
+      select.innerHTML = '<option value="">Error cargando rangos</option>';
+      status.className = 'status err';
+      status.textContent = 'No se pudieron cargar los rangos';
+      console.error(e);
+    }
+  }
+
+  async function consultar() {
+    const btn    = document.getElementById('btnConsultar');
+    const status = document.getElementById('status');
+
+    btn.disabled = true;
+    status.className = 'status';
+    status.textContent = 'Consultando...';
+
+    const body = {
+      serial_id: document.getElementById('serial_id').value.trim(),
+      reg_alta:  document.getElementById('reg_alta').value.trim(),
+      reg_baja:  document.getElementById('reg_baja').value.trim(),
+      periodo: document.getElementById('periodo').value,
+      bucket_start: document.getElementById('bucket_start').value,
+      word_swap: document.getElementById('word_swap').value === 'true',
+    };
+
+    if (!body.bucket_start) {
+      status.className = 'status err';
+      status.textContent = 'Seleccione un rango disponible';
+      btn.disabled = false;
+      return;
+    }
+
+    try {
+      const res  = await fetch(`${API}/api/pozos/ieee754`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+
+      if (!json.ok) {
+        status.className = 'status err';
+        status.textContent = json.message || 'Error desconocido';
+        renderTabla([]);
+        document.getElementById('statsCard').style.display = 'none';
+        return;
+      }
+
+      status.className = 'status ok';
+      status.textContent = `${json.total} lecturas obtenidas desde ${json.periodo.inicio} -> ${json.periodo.fin}`;
+      renderTabla(json.datos);
+      renderStats(json.datos);
+
+    } catch (e) {
+      status.className = 'status err';
+      status.textContent = 'No se pudo conectar con la API';
+      console.error(e);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function renderTabla(datos) {
+    const tbody = document.getElementById('tbody');
+    if (!datos.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">Sin resultados</td></tr>';
+      return;
+    }
+    tbody.innerHTML = datos.map((d, i) => `
+      <tr>
+        <td class="mono" style="color:var(--dim)">${i + 1}</td>
+        <td class="mono">${d.fecha}</td>
+        <td class="mono">${d.hora}</td>
+        <td class="mono teal">${d.valor}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderStats(datos) {
+    if (!datos.length) { document.getElementById('statsCard').style.display = 'none'; return; }
+    const vals = datos.map(d => d.valor);
+    const min  = Math.min(...vals);
+    const max  = Math.max(...vals);
+    const avg  = vals.reduce((a, b) => a + b, 0) / vals.length;
+
+    document.getElementById('sTotal').textContent = datos.length;
+    document.getElementById('sMin').textContent   = min.toFixed(4);
+    document.getElementById('sMax').textContent   = max.toFixed(4);
+    document.getElementById('sAvg').textContent   = avg.toFixed(4);
+    document.getElementById('statsCard').style.display = 'block';
+  }
+</script>
+</body>
+</html>
